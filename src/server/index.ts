@@ -1,0 +1,35 @@
+import Debug from 'debug'
+import {ExpressBuilder, ExpressCorsConfigurer} from "@sphereon/ssi-express-support";
+import { getVerifierStore } from 'verifier/VerifierStore';
+import { bearerAdminForVerifier } from './bearerAdminForVerifier';
+import { dumpExpressRoutes } from '@utils/dumpExpressRoutes';
+import { createRoutesForVerifier } from './createRoutesForVerifier';
+
+const debug = Debug(`eduwallet:server`)
+
+const PORT = process.env.PORT ? Number.parseInt(process.env.PORT) : 5000
+const LISTEN_ADDRESS = process.env.LISTEN_ADDRESS ?? '0.0.0.0'
+const BASEURL = process.env.BASEURL ?? 'https://verifier.dev.eduwallet.nl'
+
+const expressSupport = ExpressBuilder.fromServerOpts({
+    hostname: LISTEN_ADDRESS,
+    port: PORT,
+    basePath: new URL(BASEURL).toString()
+})
+    .withCorsConfigurer(new ExpressCorsConfigurer({}).allowOrigin('*').allowCredentials(true))
+    .withMorganLogging({format:'combined'})
+    .build({startListening: false});
+
+export async function initialiseServer() {
+    const store = getVerifierStore();
+    debug('creating routes for each verifier instance', Object.keys(store));
+    for (const verifier of Object.values(store)) {
+        bearerAdminForVerifier(verifier);
+        await createRoutesForVerifier(verifier, expressSupport);
+    }
+
+    debug("starting express server");
+    expressSupport.start();
+
+    dumpExpressRoutes(expressSupport.express);
+}

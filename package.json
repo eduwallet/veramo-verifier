@@ -1,0 +1,66 @@
+{
+  "name": "veramo-agent",
+  "version": "1.0.0",
+  "description": "Veramo agent",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/agent.ts"
+  },
+  "keywords": [],
+  "author": "Michiel Uitdehaag <info@muisit.nl>",
+  "license": "Apache-2.0",
+  "private": false,
+  "files": [
+    "src/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">= 18.0.0"
+  },
+  "prettier": {
+    "endOfLine": "auto",
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 150
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "tsx": "^4.16.2"
+  },
+  "imports": {
+    "#root/*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@digitalbazaar/did-method-jwk": "^1.0.1",
+    "@sphereon/did-auth-siop": "^0.16.0",
+    "@sphereon/ssi-express-support": "^0.29.0",
+    "@sphereon/ssi-sdk-ext.did-utils": "^0.24.0",
+    "@types/passport": "^1.0.16",
+    "@types/passport-http-bearer": "^1.0.41",
+    "@veramo/cli": "^6.0.0",
+    "@veramo/core": "^6.0.0",
+    "@veramo/credential-w3c": "^6.0.0",
+    "@veramo/data-store": "^6.0.0",
+    "@veramo/did-manager": "^6.0.0",
+    "@veramo/did-provider-ion": "^6.0.0",
+    "@veramo/did-provider-jwk": "^6.0.0",
+    "@veramo/did-provider-key": "^6.0.0",
+    "@veramo/did-provider-web": "^6.0.0",
+    "@veramo/did-resolver": "^6.0.0",
+    "@veramo/key-manager": "^6.0.0",
+    "@veramo/kms-local": "^6.0.0",
+    "did-resolver": "^4.1.0",
+    "key-did-resolver": "^4.0.0",
+    "node-fetch": "^3.3.2",
+    "passport": "^0.7.0",
+    "passport-http-bearer": "^1.0.1",
+    "pg": "^8.12.0",
+    "ts-node": "^10.9.2",
+    "typeorm": "^0.3.20",
+    "web-did-resolver": "^2.0.27"
+  }
+}
