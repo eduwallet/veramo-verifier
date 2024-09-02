@@ -8,7 +8,8 @@ import {
     IKeyManager,
     ICredentialPlugin,
 } from '@veramo/core'
-  
+import { getEnv } from 'utils/getEnv';
+
 // Core identity manager plugin
 import { DIDManager } from '@veramo/did-manager'
   
@@ -36,18 +37,25 @@ import { Resolver } from 'did-resolver'
 import { getResolver as webDidResolver } from 'web-did-resolver'
   
 // Storage plugin using TypeOrm
-import { Entities, KeyStore, DIDStore, PrivateKeyStore, migrations } from '@veramo/data-store'
+import { KeyStore, DIDStore, PrivateKeyStore } from '@veramo/data-store'
   
 // This will be the secret key for the KMS (replace this with your secret key)
 // run  npx @veramo/cli config create-secret-key
-const KMS_SECRET_KEY =process.env.DB_ENCRYPTION_KEY || 'secretkey';
-
+const KMS_SECRET_KEY = getEnv('DB_ENCRYPTION_KEY', 'secretkey');
+console.log('using ', KMS_SECRET_KEY,' as secret key', process.env);
 import { getDbConnection } from './database';
-const dbConnection = getDbConnection();
+const dbConnection = await getDbConnection();
 const webprov = new WebDIDProvider({defaultKms: 'local' });
 const jwkprov = new JwkDIDProvider({defaultKms: 'local' });
 const keyprov = new KeyDIDProvider({defaultKms: 'local' });
 const ionprov = new IonDIDProvider({defaultKms: 'local' });
+
+export const resolver = new Resolver({
+  ...webDidResolver(),
+  ...getDidIonResolver(),
+  ...getDidJwkResolver(),
+  ...getDidKeyResolver()
+});
 
 export const agent = createAgent<
 IDIDManager & IKeyManager & IDataStore & IDataStoreORM & IResolver & ICredentialPlugin
@@ -70,12 +78,7 @@ IDIDManager & IKeyManager & IDataStore & IDataStoreORM & IResolver & ICredential
       }
     }),
     new DIDResolverPlugin({
-      resolver: new Resolver({
-        ...webDidResolver(),
-        ...getDidIonResolver(),
-        ...getDidJwkResolver(),
-        ...getDidKeyResolver()
-      }),
+      resolver: resolver,
     }),
     new CredentialPlugin(),
     new CredentialIssuerLD({contextMaps:[], suites:[]})

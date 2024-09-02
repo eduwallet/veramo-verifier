@@ -1,15 +1,16 @@
 import Debug from 'debug'
+import { getEnv } from 'utils/getEnv';
 import { DataSource } from 'typeorm'
 import { Entities as VeramoDataStoreEntities, migrations as VeramoDataStoreMigrations } from '@veramo/data-store'
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions'
 
 const debug = Debug(`verifier:db`)
-const schema = process.env.DB_SCHEMA || 'verifier';
-const database = process.env.DB_NAME || 'postgres';
-const user = process.env.DB_USER || 'postgres';
-const password = process.env.DB_PASSWORD || 'postgres';
-const port = parseInt(process.env.DB_PORT || '5432');
-const host = process.env.DB_HOST || 'localhost';
+const schema = getEnv('DB_SCHEMA', 'verifier');
+const database = getEnv('DB_NAME', 'postgres');
+const user = getEnv('DB_USER', 'postgres');
+const password = getEnv('DB_PASSWORD', 'postgres');
+const port = parseInt(getEnv('DB_PORT','5432'));
+const host = getEnv('DB_HOST', 'localhost');
 
 const dbConfig: PostgresConnectionOptions = {
   type: 'postgres',
