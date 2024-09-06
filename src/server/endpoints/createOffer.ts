@@ -1,8 +1,7 @@
 import Debug from 'debug';
 import { Request, Response } from 'express'
-import { TokenErrorResponse } from '@sphereon/oid4vci-common'
 import { sendErrorResponse } from '@sphereon/ssi-express-support'
-import { GenerateAuthRequestURIResponse } from '@sphereon/ssi-sdk.siopv2-oid4vp-common'
+import { SupportedVersion } from '@sphereon/did-auth-siop'
 
 import { Verifier } from 'verifier/Verifier';
 import passport from 'passport';
@@ -21,7 +20,7 @@ interface CreateOfferResponse {
     requestUri: string;
 }
 
-export function createOffer(verifier: Verifier, createOfferPath: string, offerPath: string, responsePath:string, checkPath:string) {
+export function createOffer(verifier: Verifier, createOfferPath: string, offerPath: string, responsePath:string, presentationPath:string, checkPath:string) {
     debug("creating route for createOffer at ", createOfferPath);
     verifier.router!.post(createOfferPath,
         passport.authenticate(verifier.name + '-admin', { session: false }),
@@ -32,30 +31,17 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             const state: string = v4();
             const requestByReferenceURI = getBaseUrl() + replaceParamsInUrl(offerPath, {presentationid: presentationId, state:state});
             const responseURI = getBaseUrl() + replaceParamsInUrl(responsePath, {presentationid: presentationId, state:state});
+            const presentationURI = getBaseUrl() + replaceParamsInUrl(presentationPath, {presentationid: presentationId, state:state});
+            const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, { presentationid: presentationId, state:state });
+            const requestUri = 'openid://?request_uri=' + encodeURIComponent(requestByReferenceURI);
 
-            if (!verifier.rp) {
+            const rp = verifier.getRPForPresentation(presentationId, state);
+            if (!rp) {
                 throw new Error("RP instance not configured");
             }
             else {
-                var uri = await verifier.rp.createAuthorizationRequestURI({
-                    correlationId: state,
-                    nonce: v4(),
-                    state: state,
-                    requestByReferenceURI,
-                    responseURI,
-                    responseURIType: 'response_uri',
-                    jwtIssuer: {
-                        method: 'did',
-                        didUrl: verifier.identifier!.did,
-                        alg: verifier.signingAlgorithm()
-                    }
-                });
-
-                const authRequestBody: CreateOfferResponse = {
-                    state:state,
-                    requestUri: uri.encodedUri,
-                    checkUri: getBaseUrl() + replaceParamsInUrl(checkPath, { presentationid: presentationId, state:state }),
-                }
+                rp.createAuthorizationRequest(responseURI, presentationURI, state);
+                const authRequestBody: CreateOfferResponse = {state, requestUri, checkUri};
                 debug("returning ", authRequestBody);
                 return response.send(authRequestBody)
             }

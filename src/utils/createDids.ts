@@ -4,11 +4,11 @@ import { loadJsonFiles } from './loadJsonFiles';
 import { resolveConfPath } from './resolveConfPath';
 import { agent } from '../agent';
 
-export async function getIdentifier(did: string, alias?:string): Promise<IIdentifier | void> {
-    var retval = await agent.didManagerGet({did}).catch(() => {});
+export async function getIdentifier(did: string, alias?:string): Promise<IIdentifier|null> {
+    var retval = await agent.didManagerGet({did}).catch(() => null);
     
     if (alias && !retval) {
-        retval = await agent.didManagerGetByAlias({alias}).catch(() => {});
+        retval = await agent.didManagerGetByAlias({alias}).catch(() => null);
     }
     return retval;
 }

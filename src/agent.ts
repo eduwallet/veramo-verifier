@@ -13,10 +13,10 @@ import { getEnv } from 'utils/getEnv';
 // Core identity manager plugin
 import { DIDManager } from '@veramo/did-manager'
   
-// Ethr did identity provider
 import { WebDIDProvider } from "@veramo/did-provider-web";
 import { JwkDIDProvider, getDidJwkResolver } from "@veramo/did-provider-jwk";
-import { KeyDIDProvider, getDidKeyResolver } from "@veramo/did-provider-key";
+import { KeyDIDProvider } from "@veramo/did-provider-key";
+import { getResolver as getDidKeyResolver } from '@sphereon/ssi-sdk-ext.did-resolver-key';
 import { IonDIDProvider, getDidIonResolver } from "@veramo/did-provider-ion";
     
 // Core key manager plugin
@@ -42,7 +42,6 @@ import { KeyStore, DIDStore, PrivateKeyStore } from '@veramo/data-store'
 // This will be the secret key for the KMS (replace this with your secret key)
 // run  npx @veramo/cli config create-secret-key
 const KMS_SECRET_KEY = getEnv('DB_ENCRYPTION_KEY', 'secretkey');
-console.log('using ', KMS_SECRET_KEY,' as secret key', process.env);
 import { getDbConnection } from './database';
 const dbConnection = await getDbConnection();
 const webprov = new WebDIDProvider({defaultKms: 'local' });

@@ -24,9 +24,10 @@ import { IAgent, IKey, IKeyManager } from '@veramo/core';
 
 interface JWT { header: JwtHeader; payload: JwtPayload };
 
-export function createRPInstance(verifier:Verifier):RP
+export function createRPInstance(verifier:Verifier, presentationId:string):RP
 {
     const did = verifier.identifier!.did;
+    // based on @sphereon/ssi-sdk.siopv2-oid4vp-rp-auth/RPInstance.ts
     const defaultClientMetadata: ClientMetadataOpts = {
       idTokenSigningAlgValuesSupported: [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K],
       requestObjectSigningAlgValuesSupported: [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K],
@@ -43,19 +44,12 @@ export function createRPInstance(verifier:Verifier):RP
     }
 
     const builder = RP.builder({ requestVersion: SupportedVersion.SIOPv2_D12_OID4VP_D20 })
-      .withScope('openid', PropertyTarget.REQUEST_OBJECT)
-      .withResponseMode(ResponseMode.POST)
-      .withResponseType(ResponseType.VP_TOKEN, PropertyTarget.REQUEST_OBJECT)
-      .withClientId(did, PropertyTarget.REQUEST_OBJECT)
-      // todo: move to options fill/correct method
-      .withSupportedVersions(
-        [SupportedVersion.SIOPv2_D12_OID4VP_D20],
-      ) 
       .withEventEmitter(verifier.eventEmitter)
       .withSessionManager(verifier.sessionManager)
       .withClientMetadata(defaultClientMetadata, PropertyTarget.REQUEST_OBJECT)
       .withRevocationVerification(RevocationVerification.NEVER)
       .withPresentationVerification(verifier.getPresentationVerificationCallback())
+      .withPresentationDefinition({ definition: verifier.getPresentation(presentationId)!}, PropertyTarget.REQUEST_OBJECT)
       .withCreateJwtCallback(getCreateJwtCallback(verifier))
       .withVerifyJwtCallback(getVerifyJwtCallback(resolver));
     return builder.build();
@@ -81,7 +75,7 @@ export function getCreateJwtCallback(verifier:Verifier) {
         kid: verifier.key
       };
       const options = {
-        issuer: verifier.did,
+        issuer: verifier.identifier!.did,
         signer: wrapSigner(agent, verifier.key!, verifier.signingAlgorithm()),
         expiresIn: 10 * 60,
       }
