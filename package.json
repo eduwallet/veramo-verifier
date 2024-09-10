@@ -1,7 +1,7 @@
 {
-  "name": "veramo-agent",
+  "name": "veramo-verifier",
   "version": "1.0.0",
-  "description": "Veramo agent",
+  "description": "Veramo Verifier",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "type": "module",

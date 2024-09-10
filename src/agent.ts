@@ -63,7 +63,8 @@ IDIDManager & IKeyManager & IDataStore & IDataStoreORM & IResolver & ICredential
     new KeyManager({
       store: new KeyStore(dbConnection),
       kms: {
-        local: new KeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY))),
+//        local: new KeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY))),
+        local: new KeyManagementSystem(new PrivateKeyStore(dbConnection)),
       },
     }),
     new DIDManager({

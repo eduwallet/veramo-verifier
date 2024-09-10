@@ -35,6 +35,8 @@ export enum RPStatus {
 export interface VPResult {
     issuer: string;
     credentials:ExtractedCredential[];
+    nonce: string|undefined;
+    state: string|undefined;
 }
 
 export class RP {
@@ -45,6 +47,7 @@ export class RP {
     public authorizationRequest:AuthorizationRequestPayload|undefined;
     public jwt:string|undefined;
     public state:string|undefined;
+    public nonce:string|undefined;
     public status:RPStatus = RPStatus.INIT;
     public created:Date;
     public lastUpdate:Date;
@@ -77,6 +80,7 @@ export class RP {
 
     public createAuthorizationRequest(responseUri: string, presentationUri:string, state:string):AuthorizationRequestPayload {
         this.status = RPStatus.CREATED;
+        this.nonce = v4();
         this.authorizationRequest = {
             // basic RequestObject attributes
             "scope": Scope.OPENID,
@@ -85,7 +89,7 @@ export class RP {
             //"client_id_scheme": ...
             //"redirect_uri": redirectUri,
             "response_uri": responseUri,
-            "nonce": v4(),
+            "nonce": this.nonce,
             "state": state,
 
             // AuthorizationRequest attributes
@@ -126,13 +130,20 @@ export class RP {
             throw new Error("Invalid vp_token");
         }
 
+        if (jwt.payload.nonce != this.nonce) {
+            throw new Error("Invalid encoding of nonce");
+        }
+
         const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission);
-        if (await !presentationSubmission.verify()) {
+        const submissionCheck = await presentationSubmission.verify();
+        if (!submissionCheck) {
             throw new Error("Invalid presentation submission");
         }
 
         this.result = {
             issuer: jwt.issuer,
+            nonce: jwt.payload.nonce,
+            state: state,
             credentials: presentationSubmission.credentials
         }
         this.status = RPStatus.RESPONSE;

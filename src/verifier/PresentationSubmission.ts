@@ -9,7 +9,8 @@ interface ClaimList {
 }
 
 export interface ExtractedCredential {
-    issuer: string;
+    issuerKey: string;
+    issuer?:string|undefined;
     issuedAt?: string;
     holder: string;
     aud?: string;
@@ -71,8 +72,9 @@ export class PresentationSubmission
     private extractVCJsonCredential(jwt:JWTVerified):ExtractedCredential
     {
         var ec:ExtractedCredential= {
-            issuer: jwt.issuer,
+            issuerKey: jwt.issuer,
             holder: jwt.payload.sub!,
+            issuer: jwt.payload.issuer.id ? jwt.payload.issuer.id : jwt.payload.issuer,
             claims: {}
         };
 
