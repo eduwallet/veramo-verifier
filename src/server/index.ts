@@ -1,4 +1,5 @@
-import Debug from 'debug'
+import Debug from 'debug';
+import express from 'express';
 import {ExpressBuilder, ExpressCorsConfigurer} from "@sphereon/ssi-express-support";
 import { getVerifierStore } from 'verifier/VerifierStore';
 import { bearerAdminForVerifier } from './bearerAdminForVerifier';
@@ -19,6 +20,9 @@ const expressSupport = ExpressBuilder.fromServerOpts({
     .withCorsConfigurer(new ExpressCorsConfigurer({}).allowOrigin('*').allowCredentials(true))
     .withMorganLogging({format:'combined'})
     .build({startListening: false});
+// increase the request limit from 100kb or 1Mb to something that can include a modern image
+expressSupport.express.use(express.json({limit: '50mb'}));
+expressSupport.express.use(express.urlencoded({limit: '50mb'}));
 
 export async function initialiseServer() {
     const store = getVerifierStore();
