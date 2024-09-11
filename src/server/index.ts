@@ -5,6 +5,7 @@ import { getVerifierStore } from 'verifier/VerifierStore';
 import { bearerAdminForVerifier } from './bearerAdminForVerifier';
 import { dumpExpressRoutes } from '@utils/dumpExpressRoutes';
 import { createRoutesForVerifier } from './createRoutesForVerifier';
+import bodyParser from 'body-parser';
 
 const debug = Debug(`eduwallet:server`)
 
@@ -21,8 +22,8 @@ const expressSupport = ExpressBuilder.fromServerOpts({
     .withMorganLogging({format:'combined'})
     .build({startListening: false});
 // increase the request limit from 100kb or 1Mb to something that can include a modern image
-expressSupport.express.use(express.json({limit: '50mb'}));
-expressSupport.express.use(express.urlencoded({limit: '50mb'}));
+expressSupport.express.use(bodyParser.json({limit: '50mb'}));
+expressSupport.express.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
 export async function initialiseServer() {
     const store = getVerifierStore();
