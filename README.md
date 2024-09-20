@@ -87,24 +87,26 @@ The status attribute can be one of the following:
 - AuthorizationRequestRetrieved: wallet has scanned the code, user interaction required
 - ResponseReceived: Verifiable Presentation was returned, data available
 
-When the last status is returned, the response object is extended with the following attributes:
+When the last status is returned, the response object is extended with the `result` attribute:
 
 ```json
 {
   "status": "ResponseReceived",
   "created": "2024-09-13T09:20:49+00:00",
   "lastUpdate": "2024-09-13T09:20:49+00:00",
-  "state": "cb3349e1-8415-4d96-bd40-d03663836ad5",
-  "nonce": "8472d4aa-0429-4084-8596-b6adebf7248c",
-  "issuer": "<did key of the VP signer (should be the wallet)>",
-  "credentials": [{
-    "holder": "<did key of the VC holder (wallet)>",
-    "issuerKey": "<did key of the VC issuer>",
-    "issuer": "<VC issuer id, which currently equals the issuerKey>",
-    "claims": {
-      [x:string]: string|number
-    }
-  }]
+  "result": {
+    "state": "cb3349e1-8415-4d96-bd40-d03663836ad5",
+    "nonce": "8472d4aa-0429-4084-8596-b6adebf7248c",
+    "issuer": "<did key of the VP signer (should be the wallet)>",
+    "credentials": [{
+      "holder": "<did key of the VC holder (wallet)>",
+      "issuerKey": "<did key of the VC issuer>",
+      "issuer": "<VC issuer id, which currently equals the issuerKey>",
+      "claims": {
+        [x:string]: string|number
+      }
+    }]
+  }
 }
 ```
 
