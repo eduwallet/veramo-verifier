@@ -142,6 +142,7 @@ export class RP {
             throw new Error("Invalid presentation submission");
         }
 
+        openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
         this.result = {
             issuer: jwt.issuer,
             nonce: jwt.payload.nonce,
