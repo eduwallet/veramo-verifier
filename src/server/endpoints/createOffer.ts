@@ -8,6 +8,7 @@ import passport from 'passport';
 import { v4 } from 'uuid';
 import { replaceParamsInUrl } from '@utils/replaceParamsInUrl';
 import { getBaseUrl } from '@utils/getBaseUrl';
+import { openObserverLog } from '@utils/openObserverLog';
 
 const debug = Debug("verifier:createOffer");
 interface CreateOfferRequest {
@@ -34,6 +35,7 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             const presentationURI = getBaseUrl() + replaceParamsInUrl(presentationPath, {presentationid: presentationId, state:state});
             const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, { presentationid: presentationId, state:state });
             const requestUri = 'openid://?request_uri=' + encodeURIComponent(requestByReferenceURI);
+            openObserverLog(state, 'create-offer', { name: verifier.name, request: request.params});
 
             const rp = verifier.getRPForPresentation(presentationId, state);
             if (!rp) {
@@ -42,10 +44,12 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             else {
                 rp.createAuthorizationRequest(responseURI, presentationURI, state);
                 const authRequestBody: CreateOfferResponse = {state, requestUri, checkUri};
+                openObserverLog(state, 'create-offer', authRequestBody);
                 debug("returning ", authRequestBody);
                 return response.send(authRequestBody)
             }
         } catch (e) {
+            openObserverLog('none', 'create-offer', {'error': JSON.stringify(e)});
             return sendErrorResponse(response, 500, 'Could not create authorization request', e);
         }
     });

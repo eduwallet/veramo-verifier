@@ -24,6 +24,7 @@ import { IAgent, IKey, IKeyManager } from "@veramo/core";
 import { agent, resolver } from 'agent';
 import { ExtractedCredential, PresentationSubmission } from "./PresentationSubmission";
 import { createJWT, verifyJWT } from 'externals';
+import { openObserverLog } from "@utils/openObserverLog";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -125,7 +126,8 @@ export class RP {
                 resolver: resolver,
                 audience: this.authorizationRequest?.client_id
             });
-   
+        openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
+
         if (!jwt.verified || !jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
             throw new Error("Invalid vp_token");
         }
