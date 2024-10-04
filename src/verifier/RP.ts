@@ -26,12 +26,12 @@ import { ExtractedCredential, PresentationSubmission } from "./PresentationSubmi
 import { createJWT, verifyJWT } from 'externals';
 
 export enum RPStatus {
-    INIT = 'Initialized',
-    CREATED = 'AuthorizationRequestCreated',
-    RETRIEVED = 'AuthorizationRequestRetrieved',
-    RESPONSE = 'ResponseReceived'
+    INIT = 'INITIALIZED',
+    CREATED = 'AUTHORIZATION_REQUEST_CREATED',
+    RETRIEVED = 'AUTHORIZATION_REQUEST_RETRIEVED',
+    RESPONSE = 'RESPONSE_RECEIVED'
 }
-  
+
 export interface VPResult {
     issuer: string;
     credentials:ExtractedCredential[];
