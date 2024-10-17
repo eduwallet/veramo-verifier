@@ -26,7 +26,6 @@ interface JWT { header: JwtHeader; payload: JwtPayload };
 
 export function createRPInstance(verifier:Verifier, presentationId:string):RP
 {
-    const did = verifier.identifier!.did;
     // based on @sphereon/ssi-sdk.siopv2-oid4vp-rp-auth/RPInstance.ts
     const defaultClientMetadata: ClientMetadataOpts = {
       idTokenSigningAlgValuesSupported: [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K],

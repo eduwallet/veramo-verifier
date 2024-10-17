@@ -1,5 +1,5 @@
 import { Verifier } from "./Verifier";
-import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, W3CVerifiableCredential } from "externals";
+import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, W3CVerifiableCredential, JWTVerified } from "externals";
 import {
     AuthorizationRequestPayload,
     ClientMetadataOpts,
@@ -33,11 +33,18 @@ export enum RPStatus {
     RESPONSE = 'RESPONSE_RECEIVED'
 }
 
+export interface VPResultMessage {
+    code: string;
+    message: string;
+    [x:string]: any;
+}
+
 export interface VPResult {
-    issuer: string;
-    credentials:ExtractedCredential[];
-    nonce: string|undefined;
-    state: string|undefined;
+    issuer?:string;
+    credentials?:ExtractedCredential[];
+    nonce?:string|undefined;
+    state:string|undefined;
+    messages:VPResultMessage[];
 }
 
 export class RP {
@@ -115,41 +122,96 @@ export class RP {
     }
 
     public async processResponse(state:string, token:string, submission: PEXPresentationSubmission) {
+        // whatever happens, our state switches to RESPONSE to indicate we received something
+        this.status = RPStatus.RESPONSE;
+
+        this.result = {
+            state: state,
+            messages: []
+        }
+
         if (this.state != state) {
             console.log("state is ", this.state, state);
-            throw new Error("invalid state");
-        }
-
-        const jwt = await verifyJWT(
-            token,
-            {
-                resolver: resolver,
-                audience: this.authorizationRequest?.client_id
+            this.result.messages.push({
+                code: 'INVALID_STATE',
+                message: 'Verifier states did not match',
+                expectedState: this.state,
+                receivedState: state
             });
-        openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
-
-        if (!jwt.verified || !jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
-            throw new Error("Invalid vp_token");
+            return this.result;
         }
 
-        if (jwt.payload.nonce != this.nonce) {
-            throw new Error("Invalid encoding of nonce");
+        var jwt:JWTVerified|null = null;
+        try {
+            jwt = await verifyJWT(
+                token,
+                {
+                    resolver: resolver,
+                    audience: this.authorizationRequest?.client_id
+                });
+            if (!jwt) {
+                throw new Error("no JWT found");
+            }
+        }
+        catch (e:any) {
+            this.result!.messages.push({
+                code: 'INVALID_JWT',
+                message: 'Response JWT is corrupt',
+                error: e,
+                jwt: token
+            });
+            return this.result;
         }
 
-        const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission);
-        const submissionCheck = await presentationSubmission.verify();
-        if (!submissionCheck) {
-            throw new Error("Invalid presentation submission");
-        }
+        if (jwt !== null) {
+            this.result.issuer = jwt.issuer;
+            this.result.nonce = jwt.payload.nonce;
+            openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
 
-        openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
-        this.result = {
-            issuer: jwt.issuer,
-            nonce: jwt.payload.nonce,
-            state: state,
-            credentials: presentationSubmission.credentials
+            if (!jwt.verified) {
+                this.result!.messages.push({
+                    code: 'UNVERIFIED_JWT',
+                    message: 'Could not verify JWT token',
+                    jwt: token,
+                    signer: jwt.signer,
+                    issuer: jwt.issuer,
+                    payload: jwt.payload
+                });
+            }
+
+            if (!jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
+                this.result!.messages.push({
+                    code: 'NO_CREDENTIALS_FOUND',
+                    message: 'Decoded JWT does not contain credentials',
+                    payload: jwt.payload
+                });
+            }
+
+            if (jwt.payload.nonce != this.nonce) {
+                this.result!.messages.push({
+                    code: 'INVALID_NONCE',
+                    message: 'Nonce value of JWT does not match expected value',
+                    expectedNonce: this.nonce,
+                    receivedNonce: jwt.payload.nonce
+                });
+            }
+
+            if (jwt.payload.verifiableCredential && Array.isArray(jwt.payload.verifiableCredential)) {
+                const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission);
+                try {
+                    await presentationSubmission.verify();
+                }
+                catch (e) {
+                    this.result!.messages.push({
+                        code: 'INVALID_PRESENTATION',
+                        message: 'Validation of presentation failed',
+                        error: e
+                    });
+                }
+                openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
+                this.result.credentials = presentationSubmission.credentials;
+            }
         }
-        this.status = RPStatus.RESPONSE;
         return this.result;
     }
 }
