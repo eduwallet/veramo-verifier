@@ -31,6 +31,7 @@ export enum RPStatus {
     INIT = 'INITIALIZED',
     CREATED = 'AUTHORIZATION_REQUEST_CREATED',
     RETRIEVED = 'AUTHORIZATION_REQUEST_RETRIEVED',
+    PROCESSING = 'RESPONSE_PROCESSING',
     RESPONSE = 'RESPONSE_RECEIVED'
 }
 
@@ -124,7 +125,7 @@ export class RP {
 
     public async processResponse(state:string, token:string, submission: PEXPresentationSubmission) {
         // whatever happens, our state switches to RESPONSE to indicate we received something
-        this.status = RPStatus.RESPONSE;
+        this.status = RPStatus.PROCESSING;
 
         this.result = {
             state: state,
@@ -140,6 +141,7 @@ export class RP {
             });
             // no need to proceed further, something really bad is going on and the content
             // of the response simply cannot be trusted at all
+            this.status = RPStatus.RESPONSE;
             return this.result;
         }
 
@@ -163,6 +165,7 @@ export class RP {
                 jwt: token
             });
             // no need to carry on, the rest of the code only revolves around validating the JWT content, but there is no JWT
+            this.status = RPStatus.RESPONSE;
             return this.result;
         }
 
@@ -218,11 +221,12 @@ export class RP {
                     const messages = await this.validateStatusLists(credential);
 
                     if (messages.length > 0) {
-                        this.result!.messages.concat(messages);
+                        this.result!.messages = this.result!.messages.concat(messages);
                     }
                 }
             }
         }
+        this.status = RPStatus.RESPONSE;
         return this.result;
     }
 
@@ -237,6 +241,9 @@ export class RP {
                     retval.push(message);
                 }
             }
+        }
+        else {
+            retval.push({code:'NO_STATUS_LIST', message:'Credential does not implement a status list'});
         }
 
         return retval;
@@ -282,6 +289,11 @@ export class RP {
                             retval.code = 'CREDENTIAL_STATUS_SET';
                             retval.message = 'Statuslist purpose is unknown, but credential was set as ' + (verifiedJwt.payload.credentialSubject.statusPurpose || 'unknown_purpose');
                         }
+                    }
+                    else {
+                        // give feedback that we actually tested this credential against an external statuslist
+                        retval.code = 'CREDENTIAL_STATUS_OK';
+                        retval.message = 'Credential is not set in statuslist with purpose ' + (verifiedJwt.payload.credentialSubject.statusPurpose || 'unknown_purpose');
                     }
                 }
                 else {
