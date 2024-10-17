@@ -22,9 +22,10 @@ import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
 import { IPresentation } from "@sphereon/ssi-types";
 import { IAgent, IKey, IKeyManager } from "@veramo/core";
 import { agent, resolver } from 'agent';
-import { ExtractedCredential, PresentationSubmission } from "./PresentationSubmission";
+import { ExtractedCredential, PresentationSubmission, StatusList } from "./PresentationSubmission";
 import { createJWT, verifyJWT } from 'externals';
 import { openObserverLog } from "@utils/openObserverLog";
+import  {Bitstring} from '@digitalcredentials/bitstring';
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -131,13 +132,14 @@ export class RP {
         }
 
         if (this.state != state) {
-            console.log("state is ", this.state, state);
             this.result.messages.push({
                 code: 'INVALID_STATE',
                 message: 'Verifier states did not match',
                 expectedState: this.state,
                 receivedState: state
             });
+            // no need to proceed further, something really bad is going on and the content
+            // of the response simply cannot be trusted at all
             return this.result;
         }
 
@@ -160,6 +162,7 @@ export class RP {
                 error: e,
                 jwt: token
             });
+            // no need to carry on, the rest of the code only revolves around validating the JWT content, but there is no JWT
             return this.result;
         }
 
@@ -210,9 +213,84 @@ export class RP {
                 }
                 openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
                 this.result.credentials = presentationSubmission.credentials;
+
+                for(const credential of this.result.credentials) {
+                    const messages = await this.validateStatusLists(credential);
+
+                    if (messages.length > 0) {
+                        this.result!.messages.concat(messages);
+                    }
+                }
             }
         }
         return this.result;
+    }
+
+    private async validateStatusLists(credential:ExtractedCredential): Promise<VPResultMessage[]>
+    {
+        const retval:VPResultMessage[] = [];
+
+        if (credential.statusLists && credential.statusLists.length) {
+            for (const statusList of credential.statusLists) {
+                const message = await this.validateStatusList(statusList);
+                if (message.code.length > 0) {
+                    retval.push(message);
+                }
+            }
+        }
+
+        return retval;
+    }
+
+    private async validateStatusList(statusList:StatusList):Promise<VPResultMessage>
+    {
+        const retval:VPResultMessage = {code:'', message:''};
+        if (statusList.statusListCredential) {
+            // TODO: implement caching of statuslists
+            const jwt = await fetch(statusList.statusListCredential).then((r) => r.text()).catch((e) => {
+                retval.code = 'STATUSLIST_UNREACHABLE';
+                retval.message = 'Statuslist could not be retrieved';
+            });
+            var verifiedJwt = null;
+            if (jwt && retval.code == '') {
+                try {
+                    verifiedJwt = await verifyJWT(jwt, { resolver: resolver });
+                    if (!verifiedJwt) {
+                        throw new Error("no JWT found");
+                    }
+                }
+                catch (e:any) {
+                    retval.code = 'STATUSLIST_INVALID';
+                    retval.message = 'Statuslist did not properly decode from JWT';
+                }
+            }
+
+            if (verifiedJwt && retval.code == '') {
+                if (verifiedJwt.payload.credentialSubject && verifiedJwt.payload.credentialSubject.encodedList) {
+                    const encoded = verifiedJwt.payload.credentialSubject.encodedList;
+                    const dataList = new Bitstring({buffer:await Bitstring.decodeBits({encoded})});
+                    if (dataList.get(statusList.statusListIndex)) {
+                        if (verifiedJwt.payload.credentialSubject.statusPurpose == 'revocation') {
+                            retval.code = 'CREDENTIAL_REVOKED';
+                            retval.message = 'Statuslist indicates credential was revoked';
+                        }
+                        else if (verifiedJwt.payload.credentialSubject.statusPurpose == 'suspension') {
+                            retval.code = 'CREDENTIAL_SUSPENDED';
+                            retval.message = 'Statuslist indicates credential was suspended';
+                        }
+                        else {
+                            retval.code = 'CREDENTIAL_STATUS_SET';
+                            retval.message = 'Statuslist purpose is unknown, but credential was set as ' + (verifiedJwt.payload.credentialSubject.statusPurpose || 'unknown_purpose');
+                        }
+                    }
+                }
+                else {
+                    retval.code = 'STATUSLIST_INVALID';
+                    retval.message = 'Statuslist does not contain an encodedList claim';
+                }
+            }
+        }
+        return retval;       
     }
 }
 

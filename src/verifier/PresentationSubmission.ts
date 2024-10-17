@@ -8,6 +8,15 @@ interface ClaimList {
     [x:string]:string|number;
 }
 
+// https://w3c.github.io/vc-bitstring-status-list/#examples
+export interface StatusList {
+    id: string;
+    type: string;
+    statusPurpose: string;
+    statusListIndex: string
+    statusListCredential: string;
+}
+
 export interface ExtractedCredential {
     issuerKey: string;
     issuer?:string|undefined;
@@ -17,6 +26,7 @@ export interface ExtractedCredential {
     nbf?: number;
 
     claims: ClaimList;
+    statusLists?: StatusList[];
 }
 
 export class PresentationSubmission
@@ -86,8 +96,15 @@ export class PresentationSubmission
         }
 
         if (jwt.payload.credentialSubject) {
-            for (const k of Object.keys(jwt.payload.credentialSubject)) {
-                ec.claims[k] = jwt.payload.credentialSubject[k];
+            ec.claims = jwt.payload.credentialSubject;
+        }
+
+        if (jwt.payload.credentialStatus) {
+            if (Array.isArray(jwt.payload.credentialStatus)) {
+                ec.statusLists = jwt.payload.credentialStatus;
+            }
+            else {
+                ec.statusLists = [jwt.payload.credentialStatus];
             }
         }
 

@@ -316,6 +316,21 @@
   resolved "https://registry.yarnpkg.com/@digitalcredentials/base58-universal/-/base58-universal-1.0.1.tgz#41b5a16cdeaac9cf01b23f1e564c560c2599b607"
   integrity sha512-1xKdJnfITMvrF/sCgwBx2C4p7qcNAARyIvrAOZGqIHmBaT/hAenpC8bf44qVY+UIMuCYP23kqpIfJQebQDThDQ==
 
+"@digitalcredentials/base64url-universal@^2.0.6":
+  version "2.0.6"
+  resolved "https://registry.yarnpkg.com/@digitalcredentials/base64url-universal/-/base64url-universal-2.0.6.tgz#43c59c62a33b024e7adc3c56403d18dbcb61ec61"
+  integrity sha512-QJyK6xS8BYNnkKLhEAgQc6Tb9DMe+GkHnBAWJKITCxVRXJAFLhJnr+FsJnCThS3x2Y0UiiDAXoWjwMqtUrp4Kg==
+  dependencies:
+    base64url "^3.0.1"
+
+"@digitalcredentials/bitstring@^3.1.2":
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/@digitalcredentials/bitstring/-/bitstring-3.1.2.tgz#589a9d300c311712143a464dbcb66d66c94a807c"
+  integrity sha512-ixe9f8RbnmaZ9XP0cnjKlEhSytWerk1CKseYS8XtF3wOsT/fhzdIRtZP8iL6oDiFijsBLsnvxosgWTgltK/k8A==
+  dependencies:
+    "@digitalcredentials/base64url-universal" "^2.0.6"
+    pako "^2.0.4"
+
 "@digitalcredentials/ed25519-signature-2020@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@digitalcredentials/ed25519-signature-2020/-/ed25519-signature-2020-4.0.0.tgz#fe33560a9cef4aa303175928b5ad37e580e3adbe"
@@ -1915,7 +1930,7 @@
     expo-modules-autolinking "^0.0.3"
     invariant "^2.2.4"
 
-"@veramo-community/lds-ecdsa-secp256k1-recovery2020@github:uport-project/EcdsaSecp256k1RecoverySignature2020":
+"@veramo-community/lds-ecdsa-secp256k1-recovery2020@uport-project/EcdsaSecp256k1RecoverySignature2020":
   version "0.0.8"
   resolved "https://codeload.github.com/uport-project/EcdsaSecp256k1RecoverySignature2020/tar.gz/ab0db52de6f4e6663ef271a48009ba26e688ef9b"
   dependencies:
@@ -4829,7 +4844,7 @@ jsonld@5.2.0:
     lru-cache "^6.0.0"
     rdf-canonize "^3.0.0"
 
-"jsonld@github:digitalcredentials/jsonld.js#v10.1.x":
+jsonld@digitalcredentials/jsonld.js#v10.1.x:
   version "8.3.3-0"
   resolved "https://codeload.github.com/digitalcredentials/jsonld.js/tar.gz/da0794d863eeb65faf27673d46d9cffa32e1b65a"
   dependencies:
@@ -4838,7 +4853,7 @@ jsonld@5.2.0:
     lru-cache "^6.0.0"
     rdf-canonize "^4.0.1"
 
-"jsonld@github:digitalcredentials/jsonld.js#v10.x":
+jsonld@digitalcredentials/jsonld.js#v10.x:
   version "8.3.3-0"
   resolved "https://codeload.github.com/digitalcredentials/jsonld.js/tar.gz/14357f7a1181ae769ecc50fee9303468f17665ff"
   dependencies:
@@ -5560,6 +5575,11 @@ package-json-from-dist@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/package-json-from-dist/-/package-json-from-dist-1.0.0.tgz#e501cd3094b278495eb4258d4c9f6d5ac3019f00"
   integrity sha512-dATvCeZN/8wQsGywez1mzHtTlP22H8OEfPrVMLNr4/eGa+ijtLn/6M5f0dY8UKNrC2O9UCU6SSoG3qRKnt7STw==
+
+pako@^2.0.4:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pako/-/pako-2.1.0.tgz#266cc37f98c7d883545d11335c00fbd4062c9a86"
+  integrity sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==
 
 parse5-htmlparser2-tree-adapter@^6.0.0:
   version "6.0.1"
