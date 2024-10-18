@@ -14,6 +14,7 @@ import { getPresentationStore } from "presentations/PresentationStore";
 
 import { PresentationDefinitionV2 } from 'externals';
 import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
+import { StatusList } from "statuslist/StatusList";
 
 export interface VerifierOptions {
     name:string;
@@ -59,6 +60,7 @@ export class Verifier {
     public sessionManager:InMemoryRPSessionManager;
     public presentations:string[];
     public sessions:RPSessions = {};
+    public statusList:StatusList;
 
     public constructor(opts:VerifierOptions)
     {
@@ -69,6 +71,7 @@ export class Verifier {
         this.eventEmitter = new EventEmitter();
         this.sessionManager = new InMemoryRPSessionManager(this.eventEmitter);
         this.presentations = opts.presentations;
+        this.statusList = new StatusList();
     }
 
     public async initialise() {

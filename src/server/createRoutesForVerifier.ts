@@ -4,7 +4,7 @@ import { ExpressSupport } from "@sphereon/ssi-express-support";
 import { Verifier } from "verifier/Verifier";
 import { getBasePath } from '@utils/getBasePath';
 import { getBaseUrl } from '@utils/getBaseUrl';
-import { checkOffer, createOffer, getDidSpec, getOffer, getPresentationDef, receiveResponse } from './endpoints';
+import { checkOffer, checkStatus, createOffer, getDidSpec, getOffer, getPresentationDef, receiveResponse } from './endpoints';
 
 const debug = Debug(`verifier:server`)
 
@@ -13,6 +13,7 @@ const get_offer_path = '/get-offer/:state';
 const get_presentation_path = '/get-presentation/:presentationid';
 const response_path = '/response/:state';
 const check_offer_path = '/api/check-offer/:state';
+const check_status_path = '/api/check-status';
 
 export async function createRoutesForVerifier(verifier:Verifier, expressSupport:ExpressSupport) {
     debug('creating routes for ', verifier.name);
@@ -32,6 +33,7 @@ export async function createRoutesForVerifier(verifier:Verifier, expressSupport:
     getOffer(verifier, get_offer_path);
     receiveResponse(verifier, response_path);
     checkOffer(verifier, check_offer_path);
+    checkStatus(verifier, check_status_path);
     getDidSpec(verifier);
     getPresentationDef(verifier, get_presentation_path);
 }

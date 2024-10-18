@@ -251,55 +251,14 @@ export class RP {
 
     private async validateStatusList(statusList:StatusList):Promise<VPResultMessage>
     {
-        const retval:VPResultMessage = {code:'', message:''};
+        var retval:VPResultMessage = {code:'', message:''};
         if (statusList.statusListCredential) {
-            // TODO: implement caching of statuslists
-            const jwt = await fetch(statusList.statusListCredential).then((r) => r.text()).catch((e) => {
+            try {
+                retval = await this.verifier.statusList.checkStatus(statusList.statusListCredential, parseInt(statusList.statusListIndex));
+            }
+            catch (e) {
                 retval.code = 'STATUSLIST_UNREACHABLE';
                 retval.message = 'Statuslist could not be retrieved';
-            });
-            var verifiedJwt = null;
-            if (jwt && retval.code == '') {
-                try {
-                    verifiedJwt = await verifyJWT(jwt, { resolver: resolver });
-                    if (!verifiedJwt) {
-                        throw new Error("no JWT found");
-                    }
-                }
-                catch (e:any) {
-                    retval.code = 'STATUSLIST_INVALID';
-                    retval.message = 'Statuslist did not properly decode from JWT';
-                }
-            }
-
-            if (verifiedJwt && retval.code == '') {
-                if (verifiedJwt.payload.credentialSubject && verifiedJwt.payload.credentialSubject.encodedList) {
-                    const encoded = verifiedJwt.payload.credentialSubject.encodedList;
-                    const dataList = new Bitstring({buffer:await Bitstring.decodeBits({encoded})});
-                    if (dataList.get(statusList.statusListIndex)) {
-                        if (verifiedJwt.payload.credentialSubject.statusPurpose == 'revocation') {
-                            retval.code = 'CREDENTIAL_REVOKED';
-                            retval.message = 'Statuslist indicates credential was revoked';
-                        }
-                        else if (verifiedJwt.payload.credentialSubject.statusPurpose == 'suspension') {
-                            retval.code = 'CREDENTIAL_SUSPENDED';
-                            retval.message = 'Statuslist indicates credential was suspended';
-                        }
-                        else {
-                            retval.code = 'CREDENTIAL_STATUS_SET';
-                            retval.message = 'Statuslist purpose is unknown, but credential was set as ' + (verifiedJwt.payload.credentialSubject.statusPurpose || 'unknown_purpose');
-                        }
-                    }
-                    else {
-                        // give feedback that we actually tested this credential against an external statuslist
-                        retval.code = 'CREDENTIAL_STATUS_OK';
-                        retval.message = 'Credential is not set in statuslist with purpose ' + (verifiedJwt.payload.credentialSubject.statusPurpose || 'unknown_purpose');
-                    }
-                }
-                else {
-                    retval.code = 'STATUSLIST_INVALID';
-                    retval.message = 'Statuslist does not contain an encodedList claim';
-                }
             }
         }
         return retval;       
@@ -312,7 +271,7 @@ function wrapSigner(
     algorithm?: string,
   ) {
     return async (data: string | Uint8Array): Promise<string> => {
-      const result = await agent.keyManagerSign({ keyRef: key.kid, data: <string>data, algorithm })
-      return result
+        const result = await agent.keyManagerSign({ keyRef: key.kid, data: <string>data, algorithm })
+        return result
     }
-  }
+}
