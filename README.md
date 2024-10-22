@@ -41,13 +41,17 @@ The `instances` are a set of endpoints that are callable by front-end-verifiers 
 
 ## Interfaces
 
-The front-end-facing verifiers can interact with the Veramo-Verifier using their specific administrative `token`. There are two basic endpoints for this api: request a new authorization request object, and poll for status updates on a previously created authorization request.
+The front-end-facing verifiers can interact with the Veramo-Verifier using their specific administrative `token`. These are the basic endpoints for this api:
+
+`/:instance/api/create-offer/:presentationid`: request a new authorization request object
+`/:instance/api/check-offer/:state`: poll for status updates on a previously created authorization request
+`/:instance/api/check-status`: request a status update on a specific statuslist entry
 
 To support the Credential Verification process, the Veramo-Verifier has some additional endpoints:
 
-- get-credential-offer: the endpoint to get the actual Authorization Request Object
-- get-presentation-def: the endpoint to get a specific presentation definition
-- receive-response: the endpoint to which the wallet sends its verification response
+- `/:instance/get-offer/:state`: the endpoint to get the actual Authorization Request Object
+- `/:instance/get-presentation/:presentation`: the endpoint to get a specific presentation definition
+- `/:instance/response/:state`: the endpoint to which the wallet sends its verification response
 
 ## Endpoint definitions
 
@@ -104,7 +108,20 @@ When the last status is returned, the response object is extended with the `resu
       "issuer": "<VC issuer id, which currently equals the issuerKey>",
       "claims": {
         [x:string]: string|number
-      }
+      },
+      "statusLists": [{
+        "id": "<status list entry id>",
+        "type": "<type of this status list>",
+        "statusPurpose": "<purpose, one of revocation or suspension>",
+        "statusListIndex": "<unique numeric index>",
+        "statusListCredential": "<status list credential url>"
+      }],
+      "payload": "<JWT payload content>"
+    }],
+    "messages": [{
+      "code": "<message code>",
+      "message": "<message description>",
+      [x:string]: "<additional data>"
     }]
   }
 }
@@ -113,6 +130,52 @@ When the last status is returned, the response object is extended with the `resu
 As mentioned above, only one credential is supported at this time, so the `credentials` attribute list only ever contains a single entry.
 
 The `claims` attribute contains the actual claims as present in the Verifiable Credential and need to be interpreted by the front-end-verifier. No data types, etc. are available, except in the relevant issuer metadata. It is assumed the front-end-verifier knows in advance the mark-up required for presenting this specific type of Verifiable Credential.
+
+The `messages` list contains validation and verification messages gathered during parsing of the VerifiablePresentation. The following codes can be returned:
+
+- `INVALID_STATE`: the VP response lists a state that does not match the expected state. No further data is processed
+- `INVALID_JWT`: the VP JWT token could not be decoded correctly. No further data is processed
+- `UNVERIFIED_JWT`: the VP JWT token could not be verified, probably due to a missing or unverifiable signature
+- `NO_CREDENTIALS_FOUND`: the VP JWT did not contain the expected credentials list
+- `INVALID_NONCE`: the VP JWT payload did not encode the nonce value that was expected
+- `INVALID_PRESENTATION`: an error occurred while decoding and verifying the constitution of the verifiable presentation
+- `INVALID_VC`: an error occurred during decoding of the VC JWT
+- `VC_NBF_ERROR`: the VC not-before value lies in the future
+- `VC_IAT_ERROR`: the VC issued-at value lies in the future
+- `VC_EXP_ERROR`: the VC expiry value lies in the past
+- `VC_AUD_ERROR`: the VC aud value does not match the issuer did
+- `NO_STATUS_LIST`: no status list was assigned to the credential
+- `STATUSLIST_UNREACHABLE`: the status list assigned to the credential could not be contacted
+- `STATUSLIST_INVALID`: the status list did not properly encode the bit values
+- `CREDENTIAL_REVOKED`: the credential was indicated as revoked (bit set on a status list of type revocation)
+- `CREDENTIAL_SUSPENDED`: the credential was indicated as suspended (bit set on a status list of type suspension)
+- `CREDENTIAL_STATUS_SET`: the credential has its status bit set, but the status list type was not recognised
+- `CREDENTIAL_STATUS_OK`: the credential status could be retrieved and the status bit was not set
+
+### Check Status
+
+`/:instance/api/check-status`
+
+This `POST` endpoint allows the front-end verifier to recheck the credentialStatus of a credential. The `POST` data contains the following `json` object:
+
+```json
+{
+  "statusList": "<status list credential uri>",
+  "index": "<credential status list index number>",
+  [x:string]: "<undefined additional data>"
+}
+```
+
+The response is a status message containing a code and a message. The code is as defined above:
+
+- `STATUSLIST_UNREACHABLE`: the status list assigned to the credential could not be contacted
+- `STATUSLIST_INVALID`: the status list did not properly encode the bit values
+- `CREDENTIAL_REVOKED`: the credential was indicated as revoked (bit set on a status list of type revocation)
+- `CREDENTIAL_SUSPENDED`: the credential was indicated as suspended (bit set on a status list of type suspension)
+- `CREDENTIAL_STATUS_SET`: the credential has its status bit set, but the status list type was not recognised
+- `CREDENTIAL_STATUS_OK`: the credential status could be retrieved and the status bit was not set
+
+The `statusList` and `index` values have to be recovered from the credential statusLists attribute returned when the verification process was completed.
 
 ### Get Credential Offer
 

@@ -1,22 +1,6 @@
 import { Verifier } from "./Verifier";
-import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, W3CVerifiableCredential, JWTVerified } from "externals";
-import {
-    AuthorizationRequestPayload,
-    ClientMetadataOpts,
-    InMemoryRPSessionManager,
-    PassBy,
-    PropertyTarget,
-    ResponseMode,
-    ResponseType,
-    RevocationVerification,
-    RPRegistrationMetadataPayload,
-    Scope,
-    SIOPErrors,
-    SubjectType,
-    SupportedVersion,
-    VerifiedJWT,
-    VerifyJwtCallback,
-} from '@sphereon/did-auth-siop'
+import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, JWTVerified } from "externals";
+import { AuthorizationRequestPayload, ResponseMode, ResponseType, RPRegistrationMetadataPayload, Scope, SubjectType } from '@sphereon/did-auth-siop'
 import { v4 } from 'uuid';
 import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
 import { IPresentation } from "@sphereon/ssi-types";
@@ -25,7 +9,7 @@ import { agent, resolver } from 'agent';
 import { ExtractedCredential, PresentationSubmission, StatusList } from "./PresentationSubmission";
 import { createJWT, verifyJWT } from 'externals';
 import { openObserverLog } from "@utils/openObserverLog";
-import  {Bitstring} from '@digitalcredentials/bitstring';
+import { Message } from "types";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -35,18 +19,12 @@ export enum RPStatus {
     RESPONSE = 'RESPONSE_RECEIVED'
 }
 
-export interface VPResultMessage {
-    code: string;
-    message: string;
-    [x:string]: any;
-}
-
 export interface VPResult {
     issuer?:string;
     credentials?:ExtractedCredential[];
     nonce?:string|undefined;
     state:string|undefined;
-    messages:VPResultMessage[];
+    messages:Message[];
 }
 
 export class RP {
@@ -203,9 +181,12 @@ export class RP {
             }
 
             if (jwt.payload.verifiableCredential && Array.isArray(jwt.payload.verifiableCredential)) {
-                const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission);
+                const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission, this.verifier.did);
                 try {
-                    await presentationSubmission.verify();
+                    const verifyMessages = await presentationSubmission.verify();
+                    if (verifyMessages.length > 0) {
+                        this.result!.messages = this.result!.messages.concat(verifyMessages);
+                    }
                 }
                 catch (e) {
                     this.result!.messages.push({
@@ -230,9 +211,9 @@ export class RP {
         return this.result;
     }
 
-    private async validateStatusLists(credential:ExtractedCredential): Promise<VPResultMessage[]>
+    private async validateStatusLists(credential:ExtractedCredential): Promise<Message[]>
     {
-        const retval:VPResultMessage[] = [];
+        const retval:Message[] = [];
 
         if (credential.statusLists && credential.statusLists.length) {
             for (const statusList of credential.statusLists) {
@@ -249,9 +230,9 @@ export class RP {
         return retval;
     }
 
-    private async validateStatusList(statusList:StatusList):Promise<VPResultMessage>
+    private async validateStatusList(statusList:StatusList):Promise<Message>
     {
-        var retval:VPResultMessage = {code:'', message:''};
+        var retval:Message = {code:'', message:''};
         if (statusList.statusListCredential) {
             try {
                 retval = await this.verifier.statusList.checkStatus(statusList.statusListCredential, parseInt(statusList.statusListIndex));

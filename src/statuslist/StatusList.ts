@@ -3,6 +3,7 @@ import { resolver } from 'agent';
 import moment from 'moment';
 import {Bitstring} from '@digitalcredentials/bitstring';
 import { VPResultMessage } from 'verifier/RP';
+import { Message } from 'types';
 
 
 interface CachedList {
@@ -71,9 +72,9 @@ export class StatusList
         return this.cachedLists[statusList];
     }
 
-    public async checkStatus(statusList:string, index:number): Promise<VPResultMessage>
+    public async checkStatus(statusList:string, index:number): Promise<Message>
     {
-        const retval:VPResultMessage = { code: '', message: ''};
+        const retval:Message = { code: '', message: ''};
         var list:CachedList|null = null;
         
         try {
