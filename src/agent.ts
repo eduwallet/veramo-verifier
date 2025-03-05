@@ -15,15 +15,14 @@ import { DIDManager } from '@veramo/did-manager'
   
 import { WebDIDProvider } from "@veramo/did-provider-web";
 import { JwkDIDProvider, getDidJwkResolver } from "@veramo/did-provider-jwk";
-import { KeyDIDProvider } from "@veramo/did-provider-key";
+import { KeyDIDProvider } from "./packages/did-key-provider";
 import { getResolver as getDidKeyResolver } from '@sphereon/ssi-sdk-ext.did-resolver-key';
-import { IonDIDProvider, getDidIonResolver } from "@veramo/did-provider-ion";
     
-// Core key manager plugin
-import { KeyManager } from '@veramo/key-manager'
+// Custom key manager plugin
+import { KeyManager } from './packages/keymanager/key-manager';
   
-// Custom key management system for RN
-import { KeyManagementSystem, SecretBox } from '@veramo/kms-local'
+// Custom key management system
+import { KeyManagementSystem } from './packages/kms/key-management-system'
   
 // W3C Verifiable Credential plugin
 import { CredentialPlugin } from '@veramo/credential-w3c'
@@ -39,19 +38,14 @@ import { getResolver as webDidResolver } from 'web-did-resolver'
 // Storage plugin using TypeOrm
 import { KeyStore, DIDStore, PrivateKeyStore } from '@veramo/data-store'
   
-// This will be the secret key for the KMS (replace this with your secret key)
-// run  npx @veramo/cli config create-secret-key
-const KMS_SECRET_KEY = getEnv('DB_ENCRYPTION_KEY', 'secretkey');
 import { getDbConnection } from './database';
 const dbConnection = await getDbConnection();
 const webprov = new WebDIDProvider({defaultKms: 'local' });
 const jwkprov = new JwkDIDProvider({defaultKms: 'local' });
 const keyprov = new KeyDIDProvider({defaultKms: 'local' });
-const ionprov = new IonDIDProvider({defaultKms: 'local' });
 
 export const resolver = new Resolver({
   ...webDidResolver(),
-  ...getDidIonResolver(),
   ...getDidJwkResolver(),
   ...getDidKeyResolver()
 });
@@ -63,7 +57,6 @@ IDIDManager & IKeyManager & IDataStore & IDataStoreORM & IResolver & ICredential
     new KeyManager({
       store: new KeyStore(dbConnection),
       kms: {
-//        local: new KeyManagementSystem(new PrivateKeyStore(dbConnection, new SecretBox(KMS_SECRET_KEY))),
         local: new KeyManagementSystem(new PrivateKeyStore(dbConnection)),
       },
     }),
@@ -73,8 +66,7 @@ IDIDManager & IKeyManager & IDataStore & IDataStoreORM & IResolver & ICredential
       providers: {
         'did:web': webprov,
         'did:jwk': jwkprov,
-        'did:key': keyprov,
-        'did:ion': ionprov
+        'did:key': keyprov
       }
     }),
     new DIDResolverPlugin({

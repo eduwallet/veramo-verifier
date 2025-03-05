@@ -10,6 +10,7 @@ import { ExtractedCredential, PresentationSubmission, StatusList } from "./Prese
 import { createJWT, verifyJWT } from 'externals';
 import { openObserverLog } from "@utils/openObserverLog";
 import { Message } from "types";
+import { JWTHeader } from "did-jwt";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -48,11 +49,12 @@ export class RP {
         this.lastUpdate = new Date();
     }
 
-    public async toJWT(payload:any):Promise<string> {
+    public async toJWT(payload:any, type:string):Promise<string> {
         const header = {
             alg: this.verifier.signingAlgorithm(),
-            kid: this.verifier.key
-          };
+            kid: this.verifier.identifier!.did + '#' + this.verifier.key?.kid,
+            typ: type
+        } as Partial<JWTHeader>;
         this.jwt = await createJWT(
             payload,
             {
@@ -73,8 +75,8 @@ export class RP {
             // basic RequestObject attributes
             "scope": Scope.OPENID,
             "response_type": ResponseType.VP_TOKEN,
-            "client_id": responseUri, // required according to the spec
-            //"client_id_scheme": ...
+            "client_id": this.verifier.clientId(),
+            "client_id_scheme": "did", // UniMe workaround
             //"redirect_uri": redirectUri,
             "response_uri": responseUri,
             "nonce": this.nonce,
@@ -91,12 +93,12 @@ export class RP {
 
     private clientMetadata():RPRegistrationMetadataPayload {
         return {
-            "id_token_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K],
-            "request_object_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K],
+            "id_token_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
+            "request_object_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
             "response_types_supported": [ResponseType.VP_TOKEN],
             "scopes_supported": [Scope.OPENID],
             "subject_types_supported": [SubjectType.PAIRWISE],
-            "subject_syntax_types_supported": ['did:web', 'did:jwk', 'did:key', 'did:ion'],
+            "subject_syntax_types_supported": ['did:jwk', 'did:key'],
             "vp_formats": this.verifier.vpFormats()
         };
     }
