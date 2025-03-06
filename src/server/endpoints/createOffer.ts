@@ -34,7 +34,7 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             const responseURI = getBaseUrl() + replaceParamsInUrl(responsePath, {presentationid: presentationId, state:state});
             const presentationURI = getBaseUrl() + replaceParamsInUrl(presentationPath, {presentationid: presentationId, state:state});
             const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, { presentationid: presentationId, state:state });
-            const requestUri = 'openid://?request_uri=' + encodeURIComponent(requestByReferenceURI);
+            const requestUri = 'openid://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
             openObserverLog(state, 'create-offer', { name: verifier.name, request: request.params});
 
             const rp = verifier.getRPForPresentation(presentationId, state);

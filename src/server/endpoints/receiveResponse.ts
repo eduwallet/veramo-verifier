@@ -11,6 +11,7 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
         responsePath,
         async (request: Request, response: Response) => {
             try {
+                debug("receiving auth response", verifier.name, request.params);
                 const state = request.params.state
                 const rp = verifier.sessions[state];
                 openObserverLog(state, 'receive-response', { name: verifier.name, request: request.params});

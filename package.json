@@ -51,7 +51,6 @@
     "@veramo/credential-w3c": "^6.0.0",
     "@veramo/data-store": "^6.0.0",
     "@veramo/did-manager": "^6.0.0",
-    "@veramo/did-provider-ion": "^6.0.0",
     "@veramo/did-provider-jwk": "^6.0.0",
     "@veramo/did-provider-key": "^6.0.0",
     "@veramo/did-provider-web": "^6.0.0",

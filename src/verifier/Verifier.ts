@@ -29,7 +29,7 @@ const keyMapping: Record<TKeyType, string> = {
     Secp256k1: 'EcdsaSecp256k1VerificationKey2019',
     Secp256r1: 'EcdsaSecp256r1VerificationKey2019',
     // we need JsonWebKey2020 output
-    Ed25519: 'JsonWebKey2020', //'Ed25519VerificationKey2018', 
+    Ed25519: 'Ed25519VerificationKey2018', 
     X25519: 'X25519KeyAgreementKey2019',
     Bls12381G1: 'Bls12381G1Key2020',
     Bls12381G2: 'Bls12381G2Key2020'
@@ -84,6 +84,16 @@ export class Verifier {
         // this must return a valid entry, unless we have a case of a bad configuration, in which case we can
         // safely throw an exception
         this.key = await getKey({identifier: this.identifier!, vmRelationship: "verificationMethod"}, {agent});
+    }
+    
+    public clientId()
+    {
+        return this.identifier!.did; // workaround for UniMe, which only supports the client_id_scheme 'did'
+    }
+
+    public basePath()
+    {
+        return getBaseUrl() + '/' + this.name;
     }
 
     public getRPForPresentation(presentationId:string, state:string): RP {

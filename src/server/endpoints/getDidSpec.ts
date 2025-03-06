@@ -1,5 +1,8 @@
+import Debug from 'debug';
 import { Request } from 'express'
 import { Verifier } from 'verifier/Verifier';
+
+const debug = Debug('server:didspec');
 
 export function getDidSpec(verifier:Verifier) {
     var path = '/.well-known/did.json';
@@ -13,6 +16,7 @@ export function getDidSpec(verifier:Verifier) {
         path = '/did.json';
     }
     verifier.router!.get(path, async (req: Request, res) => {
+        debug("getting did.json for", verifier.name);
         const didDoc = verifier.getDidDoc();
         return res.json(didDoc);
     });

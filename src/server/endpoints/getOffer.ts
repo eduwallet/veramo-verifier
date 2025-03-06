@@ -12,6 +12,7 @@ export function getOffer(verifier: Verifier, offerPath: string) {
     verifier.router!.get(offerPath,
         async (request: Request, response: Response<string>) => {
             try {
+                debug("receiving request for offer");
                 const state = request.params.state
                 const rp = verifier.sessions[state];
                 openObserverLog(state, 'get-offer', { name: verifier.name, request: request.params});
@@ -21,7 +22,8 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                     return sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
 
-                await rp.toJWT(rp.authorizationRequest);
+                debug("sending", rp.authorizationRequest);
+                await rp.toJWT(rp.authorizationRequest, 'oauth-authz-req+jwt');
                 rp.status = RPStatus.RETRIEVED;
                 response.statusCode = 200
                 openObserverLog(state, 'get-offer', { name: verifier.name, response: rp.authorizationRequest});
