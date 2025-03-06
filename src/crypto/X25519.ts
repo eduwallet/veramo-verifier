@@ -12,7 +12,11 @@ export class X25519 extends CryptoKey {
     }
 
     createPrivateKey() {
-        this.privateKeyBytes = x25519.utils.randomPrivateKey();
+        this.initialisePrivateKey(x25519.utils.randomPrivateKey());
+    }
+
+    initialisePrivateKey(key: any): void {
+        this.privateKeyBytes = key;
         this.publicKeyBytes = x25519.getPublicKey(this.privateKeyBytes);
     }
 

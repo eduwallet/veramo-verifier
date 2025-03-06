@@ -16,7 +16,13 @@ export class Secp256r1 extends CryptoKey {
     createPrivateKey() {
         const key = new elliptic.ec('p256');
         const keypair = key.genKeyPair();
-        this.privateKeyBytes = this.hexToBytes(keypair.getPrivate('hex'));
+        this.initialisePrivateKey(this.hexToBytes(keypair.getPrivate('hex')));
+    }
+
+    initialisePrivateKey(key: any): void {
+        const p256key = new elliptic.ec('p256');
+        const keypair = p256key.keyFromPrivate(key);
+        this.privateKeyBytes = key;
         this.publicKeyBytes = this.hexToBytes(keypair.getPublic(true, 'hex'));
     }
 

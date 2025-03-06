@@ -8,7 +8,6 @@ import {
     IKeyManager,
     ICredentialPlugin,
 } from '@veramo/core'
-import { getEnv } from 'utils/getEnv';
 
 // Core identity manager plugin
 import { DIDManager } from '@veramo/did-manager'

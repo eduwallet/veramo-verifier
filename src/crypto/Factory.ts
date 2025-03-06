@@ -25,7 +25,7 @@ export const Factory = {
         }
 
         if (privateKeyHex) {
-            key.initialisePrivateKey(privateKeyHex);
+            key.initialisePrivateKey(key.hexToBytes(privateKeyHex));
         }
         return key;
     },

@@ -59,11 +59,11 @@ export abstract class CryptoKey {
         this.privateKeyBytes = key;
     }
 
-    protected bytesToHex(bytes:Uint8Array):string
+    public bytesToHex(bytes:Uint8Array):string
     {
         return toString(bytes, 'base16');
     }
-    protected hexToBytes(buffer:string):Uint8Array
+    public hexToBytes(buffer:string):Uint8Array
     {
         let input = buffer.startsWith('0x') ? buffer.substring(2) : buffer;
 

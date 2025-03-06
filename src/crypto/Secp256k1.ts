@@ -16,8 +16,14 @@ export class Secp256k1 extends CryptoKey {
     createPrivateKey() {
         const key = createECDH('secp256k1');
         key.generateKeys();
-        this.privateKeyBytes = this.hexToBytes(key.getPrivateKey('hex'));
-        this.publicKeyBytes = this.hexToBytes(key.getPublicKey('hex', 'compressed'));
+        this.initialisePrivateKey(this.hexToBytes(key.getPrivateKey('hex')));
+    }
+
+    initialisePrivateKey(key: any): void {
+        const secpkey = createECDH('secp256k1');
+        secpkey.setPrivateKey(key);
+        this.privateKeyBytes = key;
+        this.publicKeyBytes = this.hexToBytes(secpkey.getPublicKey('hex', 'compressed'));
     }
 
     importFromDid(didKey: string): void {

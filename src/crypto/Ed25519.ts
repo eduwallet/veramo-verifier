@@ -12,6 +12,10 @@ export class Ed25519 extends CryptoKey {
     }
 
     createPrivateKey() {
+        this.initialisePrivateKey(ed25519.utils.randomPrivateKey());
+    }
+
+    initialisePrivateKey(key: any): void {
         this.privateKeyBytes = ed25519.utils.randomPrivateKey();
         this.publicKeyBytes = ed25519.getPublicKey(this.privateKeyBytes);
     }

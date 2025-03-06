@@ -10,6 +10,7 @@ import {
   AbstractKeyManagementSystem,
   AbstractPrivateKeyStore,
   Eip712Payload,
+  ImportablePrivateKey,
   ManagedPrivateKey,
 } from '@veramo/key-manager'
 
@@ -59,6 +60,7 @@ export class KeyManagementSystem extends AbstractKeyManagementSystem {
   async createKey({ type }: { type: TKeyType }): Promise<ManagedKeyInfo> {
     let cryptoKey = Factory.createFromType(type as string);
     cryptoKey.createPrivateKey();
+    await this.importKey({ type: cryptoKey.keyType as any, privateKeyHex: cryptoKey.exportPrivateKey() })
     return this.asManagedKeyInfo(cryptoKey);
   }
 
