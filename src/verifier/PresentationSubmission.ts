@@ -122,11 +122,22 @@ export class PresentationSubmission
             claims: {}
         };
 
-        if (jwt.payload.credentialSubject) {
+        if (jwt.payload.vc && jwt.payload.vc.credentialSubject) {
+            ec.claims = jwt.payload.vc.credentialSubject;
+        }
+        else if (jwt.payload.credentialSubject) {
             ec.claims = jwt.payload.credentialSubject;
         }
 
-        if (jwt.payload.credentialStatus) {
+        if (jwt.payload.vc && jwt.payload.vc.credentialStatus) {
+            if (Array.isArray(jwt.payload.vc.credentialStatus)) {
+                ec.statusLists = jwt.payload.vc.credentialStatus;
+            }
+            else {
+                ec.statusLists = [jwt.payload.vc.credentialStatus];
+            }
+        }
+        else if (jwt.payload.credentialStatus) {
             if (Array.isArray(jwt.payload.credentialStatus)) {
                 ec.statusLists = jwt.payload.credentialStatus;
             }

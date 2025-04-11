@@ -26,6 +26,11 @@ expressSupport.express.use(bodyParser.json({limit: '50mb'}));
 expressSupport.express.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
 export async function initialiseServer() {
+    // serving root page to accomodate ngrok
+    expressSupport.express.get('/', (req, res) => {
+        res.send(`<html><body><h1>Restricted Verifier API is running 🎉</h1></body></html>`);
+    });
+
     const store = getVerifierStore();
     debug('creating routes for each verifier instance', Object.keys(store));
     for (const verifier of Object.values(store)) {
