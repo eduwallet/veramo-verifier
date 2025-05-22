@@ -1,25 +1,17 @@
-import { IAgentContext, IIdentifier, IKey, IKeyManager, IService, RequireOnly } from '@veramo/core-types'
+import { IAgentContext, IIdentifier, IKey, IKeyManager, IService, RequireOnly, MinimalImportableKey } from '@veramo/core-types'
 import { AbstractIdentifierProvider } from '@veramo/did-manager'
-import { Factory } from '../../crypto/Factory';
+import { Factory } from '@muisit/cryptokey';
 
 import Debug from 'debug'
+import { IKeyManagerCreateArgs } from '@veramo/core';
 
 const debug = Debug('packages:did-key:identifier-provider')
 
 type IContext = IAgentContext<IKeyManager>
 type CreateKeyDidOptions = {
-  keyType?: keyof typeof keyCodecs
+  keyType?: string;
   privateKeyHex?: string
 }
-
-const keyCodecs = {
-  Ed25519: 'ed25519-pub',
-  X25519: 'x25519-pub',
-  Secp256k1: 'secp256k1-pub',
-  Secp256r1: 'p256-pub',
-  Bls12381G1: 'bls12_381-g1-pub',
-  Bls12381G2: 'bls12_381-g2-pub',
-} as const
 
 /**
  * {@link @veramo/did-manager#DIDManager} identifier provider for `did:key` identifiers
@@ -50,12 +42,12 @@ export class KeyDIDProvider extends AbstractIdentifierProvider {
       context,
     )
 
-    const cryptoKey = Factory.createFromType(key.type, key.privateKeyHex);
+    const cryptoKey = await Factory.createFromType(key.type, key.privateKeyHex);
     cryptoKey.setPublicKey(key.publicKeyHex);
-    const methodSpecificId:string = cryptoKey.makeDidKeyIdentifier();
+    const methodSpecificId:string = await Factory.toDIDKey(cryptoKey);
 
     const identifier: Omit<IIdentifier, 'provider'> = {
-      did: 'did:key:' + methodSpecificId,
+      did: methodSpecificId,
       controllerKeyId: key.kid,
       keys: [key],
       services: [],
@@ -123,11 +115,11 @@ export class KeyDIDProvider extends AbstractIdentifierProvider {
         kms: args.kms || this.defaultKms,
         type: args.options.keyType,
         privateKeyHex: args.options.privateKeyHex,
-      })
+      } as MinimalImportableKey)
     }
     return context.agent.keyManagerCreate({
       kms: args.kms || this.defaultKms,
       type: args.options.keyType,
-    })
+    } as IKeyManagerCreateArgs)
   }
 }

@@ -18,7 +18,7 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 if (!rp) {
                     openObserverLog(state, 'receive-response', { error: 'no state for this request found'});
                     debug.log('no state for this response');
-                    return sendErrorResponse(response, 404, 'No authorization request could be found');
+                    sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
 
                 try {
@@ -30,10 +30,10 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 }
                 response.statusCode = 200
                 openObserverLog(state, 'receive-response', { name: verifier.name, status: 200});
-                return response.end();
+                response.end();
             } catch (e) {
                 openObserverLog('none', 'receive-response', { error: JSON.stringify(e) });
-                return sendErrorResponse(response, 500, 'Could not process response', e);
+                sendErrorResponse(response, 500, 'Could not process response', e);
             }
         }
     );

@@ -46,11 +46,11 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
                 const authRequestBody: CreateOfferResponse = {state, requestUri, checkUri};
                 openObserverLog(state, 'create-offer', authRequestBody);
                 debug("returning ", authRequestBody);
-                return response.send(authRequestBody)
+                response.send(authRequestBody)
             }
         } catch (e) {
             openObserverLog('none', 'create-offer', {'error': JSON.stringify(e)});
-            return sendErrorResponse(response, 500, 'Could not create authorization request', e);
+            sendErrorResponse(response, 500, 'Could not create authorization request', e);
         }
     });
 }

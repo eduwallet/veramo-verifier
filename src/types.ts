@@ -4,3 +4,7 @@ export interface Message {
 
     [x:string]: any;
 }
+
+export interface StringKeyedObject {
+    [x:string]: object;
+}

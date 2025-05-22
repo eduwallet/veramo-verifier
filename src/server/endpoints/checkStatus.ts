@@ -14,9 +14,9 @@ export function checkStatus(verifier: Verifier, checkPath: string) {
         async (request: Request<StatusRequest>, response: Response) => {
         try {
             const result = await verifier.statusList.checkStatus(request.body.statusList, request.body.index);
-            return response.send(result);
+            response.send(result);
         } catch (e) {
-            return sendErrorResponse(response, 500, 'Could not determine RP session', e);
+            sendErrorResponse(response, 500, 'Could not determine RP session', e);
         }
     });
 }

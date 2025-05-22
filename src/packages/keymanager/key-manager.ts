@@ -13,9 +13,9 @@ import {
   IKeyManagerSignEthTXArgs,
   IKeyManagerSignJWTArgs,
   ManagedKeyInfo,
-  MinimalImportableKey
+  MinimalImportableKey,
+  schema
 } from '@veramo/core-types'
-import { schema } from '@veramo/core-types'
 import * as u8a from 'uint8arrays'
 
 /**
@@ -130,7 +130,7 @@ export class KeyManager implements IAgentPlugin {
       if (typeof data !== 'string') {
           data = u8a.toString(data, 'base16');
       }
-      return this.keyManagerSign({ keyRef: kid, data, encoding: 'utf-8' })
+      return this.keyManagerSign({ keyRef: kid, data: data as string, encoding: 'utf-8' })
   }
 
   /** {@inheritDoc @veramo/core-types#IKeyManager.keyManagerSign} */

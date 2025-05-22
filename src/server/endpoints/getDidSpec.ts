@@ -18,6 +18,6 @@ export function getDidSpec(verifier:Verifier) {
     verifier.router!.get(path, async (req: Request, res) => {
         debug("getting did.json for", verifier.name);
         const didDoc = verifier.getDidDoc();
-        return res.json(didDoc);
+        res.json(didDoc);
     });
 }

@@ -22,7 +22,7 @@ export function checkOffer(verifier: Verifier, checkPath: string) {
         try {
             const rp = verifier.sessions[request.params.state];
             if (!rp) {
-                return sendErrorResponse(response, 404, 'No authorization request could be found');
+                sendErrorResponse(response, 404, 'No authorization request could be found');
             }
             const responseObject:CheckOfferResponse = {
                 status: rp.status,
@@ -32,9 +32,9 @@ export function checkOffer(verifier: Verifier, checkPath: string) {
             if (rp.status == RPStatus.RESPONSE) {
                 responseObject.result = rp.result;
             }
-            return response.send(responseObject);
+            response.send(responseObject);
         } catch (e) {
-            return sendErrorResponse(response, 500, 'Could not determine RP session', e);
+            sendErrorResponse(response, 500, 'Could not determine RP session', e);
         }
     });
 }

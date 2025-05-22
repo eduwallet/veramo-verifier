@@ -19,7 +19,7 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                 if (!rp) {
                     console.log('no state for this request');
                     openObserverLog(state, 'get-offer', { error: 'no authorization request could be found'});
-                    return sendErrorResponse(response, 404, 'No authorization request could be found');
+                    sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
 
                 debug("sending", rp.authorizationRequest);
@@ -27,10 +27,10 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                 rp.status = RPStatus.RETRIEVED;
                 response.statusCode = 200
                 openObserverLog(state, 'get-offer', { name: verifier.name, response: rp.authorizationRequest});
-                return response.end(rp.jwt);
+                 response.end(rp.jwt);
             } catch (e) {
                 openObserverLog('none', 'get-offer', { error: JSON.stringify(e) });
-                return sendErrorResponse(response, 500, 'Could not get authorization request', e);
+                sendErrorResponse(response, 500, 'Could not get authorization request', e);
             }
         });
 }

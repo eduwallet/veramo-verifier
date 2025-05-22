@@ -2,9 +2,7 @@ import { verifyJWT } from 'externals';
 import { resolver } from 'agent';
 import moment from 'moment';
 import {Bitstring} from '@digitalcredentials/bitstring';
-import { VPResultMessage } from 'verifier/RP';
 import { Message } from 'types';
-
 
 interface CachedList {
     id: string;

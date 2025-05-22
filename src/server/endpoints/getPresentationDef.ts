@@ -13,10 +13,10 @@ export function getPresentationDef(verifier:Verifier, path:string) {
         const presentation = verifier.getPresentation(req.params.presentationid);
         if (!presentation) {
             openObserverLog('none', 'get-presentation', { error: 'no presentation found'});
-            return sendErrorResponse(response, 404, 'No such presentation for ' + req.params.presentationid);
+            sendErrorResponse(response, 404, 'No such presentation for ' + req.params.presentationid);
         }
         openObserverLog('none', 'get-presentation', { name: verifier.name, response: presentation});
         debug("returning", presentation);
-        return response.json(presentation);
+        response.json(presentation);
     });
 }
