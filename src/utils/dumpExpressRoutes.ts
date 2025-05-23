@@ -15,7 +15,7 @@ function print (path:any, layer:any) {
   function split (thing:any) {
     if (typeof thing === 'string') {
       return thing.split('/')
-    } else if (thing.fast_slash) {
+    } else if (!thing || thing.fast_slash) {
       return ''
     } else {
       var match = thing.toString()

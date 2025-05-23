@@ -1,6 +1,6 @@
-import {KeyDIDProvider} from "../packages/did-key-provider/key-did-provider.js";
+import {KeyDIDProvider} from "../packages/did-key-provider/key-did-provider";
 import {WebDIDProvider} from "@veramo/did-provider-web";
-import {JwkDIDProvider} from "@veramo/did-provider-jwk";
+import {JwkDIDProvider} from "../packages/did-jwk-provider/jwk-did-provider";
 
 export function createDidProvider() {
     return {

@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",
+    "reflect-metadata": "^0.2.2",
     "tsx": "^4.16.2"
   },
   "imports": {
@@ -52,12 +53,8 @@
     "@veramo/credential-w3c": "^6.0.0",
     "@veramo/data-store": "^6.0.0",
     "@veramo/did-manager": "^6.0.0",
-    "@veramo/did-provider-jwk": "^6.0.0",
-    "@veramo/did-provider-key": "^6.0.0",
     "@veramo/did-provider-web": "^6.0.0",
     "@veramo/did-resolver": "^6.0.0",
-    "@veramo/key-manager": "^6.0.0",
-    "@veramo/kms-local": "^6.0.0",
     "did-resolver": "^4.1.0",
     "dotenv-flow": "^4.1.0",
     "express": "5.1",
