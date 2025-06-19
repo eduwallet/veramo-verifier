@@ -3,14 +3,15 @@ import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubm
 import { AuthorizationRequestPayload, ResponseMode, ResponseType, RPRegistrationMetadataPayload, Scope, SubjectType } from '@sphereon/did-auth-siop'
 import { v4 } from 'uuid';
 import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
-import { IPresentation } from "@sphereon/ssi-types";
 import { IAgent, IKey, IKeyManager } from "@veramo/core";
-import { agent, resolver } from 'agent';
-import { ExtractedCredential, PresentationSubmission, StatusList } from "./PresentationSubmission";
-import { createJWT, verifyJWT } from 'externals';
+import { agent } from 'agent';
+import { StatusList } from "./PresentationSubmission";
 import { openObserverLog } from "@utils/openObserverLog";
-import { Message } from "types";
-import { JWTHeader } from "did-jwt";
+import { ApiResponseCredential, Message } from "types";
+import { JWT } from "jwt/JWT";
+import { CryptoKey } from "@muisit/cryptokey/*";
+import { Credential } from "credentials/Credential";
+import { Factory } from "credentials/Factory";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -22,7 +23,7 @@ export enum RPStatus {
 
 export interface VPResult {
     issuer?:string;
-    credentials?:ExtractedCredential[];
+    credentials?:ApiResponseCredential[];
     nonce?:string|undefined;
     state:string|undefined;
     messages:Message[];
@@ -50,21 +51,20 @@ export class RP {
     }
 
     public async toJWT(payload:any, type:string):Promise<string> {
-        const header = {
+        const jwt = new JWT();
+        jwt.header = {
             alg: this.verifier.signingAlgorithm(),
             kid: this.verifier.identifier!.did + '#' + this.verifier.key?.kid,
             typ: type
-        } as Partial<JWTHeader>;
-        this.jwt = await createJWT(
-            payload,
-            {
-                issuer: this.verifier.identifier!.did,
-                signer: wrapSigner(agent, this.verifier.key!, this.verifier.signingAlgorithm()),
-                expiresIn: 10  *60,
-                canonicalize: false
-            },
-            header);
+        };
+        jwt.payload = payload;
+        await jwt.sign(async (data:Uint8Array) => agent.keyManagerSign({
+            keyRef: this.verifier.key!.kid,
+            data:data as unknown as string,
+            algorithm: this.verifier.signingAlgorithm()
+        }));
         this.lastUpdate = new Date();
+        this.jwt = jwt.token;
         return this.jwt!;
     }
 
@@ -125,16 +125,12 @@ export class RP {
             return this.result;
         }
 
-        var jwt:JWTVerified|null = null;
+        var jwt = JWT.fromToken(token);
+        let key:CryptoKey|null = null;
         try {
-            jwt = await verifyJWT(
-                token,
-                {
-                    resolver: resolver,
-                    audience: this.authorizationRequest?.client_id
-                });
-            if (!jwt) {
-                throw new Error("no JWT found");
+            key = await jwt.findKey();
+            if (!key) {
+                throw new Error("Unable to determine signing key for response JWT");
             }
         }
         catch (e:any) {
@@ -149,63 +145,68 @@ export class RP {
             return this.result;
         }
 
-        if (jwt !== null) {
-            this.result.issuer = jwt.issuer;
-            this.result.nonce = jwt.payload.nonce;
-            openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
+        this.result.issuer = jwt.issuer;
+        this.result.nonce = jwt.payload.nonce;
+        openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
 
-            if (!jwt.verified) {
-                this.result!.messages.push({
-                    code: 'UNVERIFIED_JWT',
-                    message: 'Could not verify JWT token',
-                    jwt: token,
-                    signer: jwt.signer,
-                    issuer: jwt.issuer,
-                    payload: jwt.payload
-                });
-            }
+        if (!jwt.verify(key)) {
+            this.result!.messages.push({
+                code: 'UNVERIFIED_JWT',
+                message: 'Could not verify JWT token',
+                jwt: token,
+                issuer: jwt.issuer,
+                payload: jwt.payload
+            });
+        }
 
-            if (!jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
-                this.result!.messages.push({
-                    code: 'NO_CREDENTIALS_FOUND',
-                    message: 'Decoded JWT does not contain credentials',
-                    payload: jwt.payload
-                });
-            }
+        if (!jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
+            this.result!.messages.push({
+                code: 'NO_CREDENTIALS_FOUND',
+                message: 'Decoded JWT does not contain credentials',
+                payload: jwt.payload
+            });
+        }
 
-            if (jwt.payload.nonce != this.nonce) {
-                this.result!.messages.push({
-                    code: 'INVALID_NONCE',
-                    message: 'Nonce value of JWT does not match expected value',
-                    expectedNonce: this.nonce,
-                    receivedNonce: jwt.payload.nonce
-                });
-            }
+        if (jwt.payload.nonce != this.nonce) {
+            this.result!.messages.push({
+                code: 'INVALID_NONCE',
+                message: 'Nonce value of JWT does not match expected value',
+                expectedNonce: this.nonce,
+                receivedNonce: jwt.payload.nonce
+            });
+        }
 
-            if (jwt.payload.verifiableCredential && Array.isArray(jwt.payload.verifiableCredential)) {
-                const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission, this.verifier.did);
+        if (jwt.payload.verifiableCredential && Array.isArray(jwt.payload.verifiableCredential)) {
+            let credentials:Credential[] = [];
+            for (const c of jwt.payload.verifiableCredential) {
                 try {
-                    const verifyMessages = await presentationSubmission.verify();
-                    if (verifyMessages.length > 0) {
-                        this.result!.messages = this.result!.messages.concat(verifyMessages);
+                    const credential = await Factory.parse(c);
+
+                    if (!credential.verify()) {
+                        this.result!.messages.push({
+                            code: 'INVALID_CREDENTIAL',
+                            message: 'Validation of credential failed'
+                        });
                     }
+                    credentials.push(credential);
                 }
                 catch (e) {
                     this.result!.messages.push({
-                        code: 'INVALID_PRESENTATION',
-                        message: 'Validation of presentation failed',
+                        code: 'INVALID_CREDENTIAL',
+                        message: 'Credential type not supported or corrupt',
                         error: e
                     });
                 }
-                openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
-                this.result.credentials = presentationSubmission.credentials;
+            }
 
-                for(const credential of this.result.credentials) {
-                    const messages = await this.validateStatusLists(credential);
+            openObserverLog(state, 'receive-response', { name: this.verifier.name, credentials: credentials});
+            this.result.credentials = credentials.map((c:Credential) => c.export());
 
-                    if (messages.length > 0) {
-                        this.result!.messages = this.result!.messages.concat(messages);
-                    }
+            for(const credential of credentials) {
+                const messages = await this.validateStatusLists(credential);
+
+                if (messages.length > 0) {
+                    this.result!.messages = this.result!.messages.concat(messages);
                 }
             }
         }
@@ -213,7 +214,7 @@ export class RP {
         return this.result;
     }
 
-    private async validateStatusLists(credential:ExtractedCredential): Promise<Message[]>
+    private async validateStatusLists(credential:Credential): Promise<Message[]>
     {
         const retval:Message[] = [];
 

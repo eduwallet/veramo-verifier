@@ -1,10 +1,8 @@
 import { Verifier } from './Verifier';
 import {
     ClientMetadataOpts,
-    InMemoryRPSessionManager,
     PassBy,
     PropertyTarget,
-    ResponseMode,
     ResponseType,
     RevocationVerification,
     RP,
@@ -15,9 +13,8 @@ import {
     VerifiedJWT,
     VerifyJwtCallback,
   } from '@sphereon/did-auth-siop'
-import { EventEmitter } from 'events'
 import { JwtPayload, JwtHeader, parseJWT, SigningAlgo, JwtIssuer } from '@sphereon/oid4vc-common'
-import { createJWT, EdDSASigner, JWTOptions, JWTVerifyOptions, Signer, verifyJWT } from 'did-jwt'
+import { createJWT, JWTOptions, JWTVerifyOptions, verifyJWT } from 'did-jwt'
 import { Resolvable } from 'did-resolver';
 import { agent, resolver } from 'agent';
 import { IAgent, IKey, IKeyManager } from '@veramo/core';

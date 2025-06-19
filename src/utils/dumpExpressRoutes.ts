@@ -17,7 +17,7 @@ function print (path:any, layer:any) {
       return thing.split('/')
     } else if (!thing || thing.fast_slash) {
       return ''
-    } else {
+    } else if (thing) {
       var match = thing.toString()
         .replace('\\/?', '')
         .replace('(?=\\/|$)', '$')
@@ -29,5 +29,5 @@ function print (path:any, layer:any) {
   }
   
 export const dumpExpressRoutes = (app:Express) => {
-    app._router.stack.forEach(print.bind(null, []));
+    app.router.stack.forEach(print.bind(null, []));
 }

@@ -3,6 +3,7 @@ import { resolver } from 'agent';
 import moment from 'moment';
 import {Bitstring} from '@digitalcredentials/bitstring';
 import { Message } from 'types';
+import { JWT } from 'jwt/JWT';
 
 interface CachedList {
     id: string;
@@ -33,31 +34,35 @@ export class StatusList
 
     private async retrieveList(statusList:string)
     {
-        const jwt = await fetch(statusList).then((r) => r.text()).catch((e) => {
+        const token = await fetch(statusList).then((r) => r.text()).catch((e) => {
             throw new Error('STATUSLIST_UNREACHABLE:Statuslist could not be retrieved');
         });
-        var verifiedJwt = null;
-        if (jwt) {
-            try {
-                verifiedJwt = await verifyJWT(jwt, { resolver: resolver });
-                if (!verifiedJwt) {
-                    throw new Error("no JWT found");
-                }
-            }
-            catch (e:any) {
-                throw new Error('STATUSLIST_INVALID:Statuslist did not properly decode from JWT');
-            }
+        const jwt = JWT.fromToken(token);
+        const key = await jwt.findKey();
+        if (!key) {
+            throw new Error("STATUSLIST_INVALID:Status list does not contain a key");
         }
-        if (verifiedJwt) {
-            if (verifiedJwt.payload.credentialSubject && verifiedJwt.payload.credentialSubject.encodedList) {
-                this.cachedLists[statusList] = {
-                    id: verifiedJwt.payload.credentialSubject.encodedList,
-                    purpose: verifiedJwt.payload.credentialSubject.statusPurpose ?? 'revocation',
-                    retrieved: new Date(),
-                    expires: moment().add(60 * 60, 's').toDate()
-                }
-                return;
+        if (!await jwt.verify(key)) {
+            throw new Error("STATUSLIST_INVALID:Status list JWT cannot be verified");
+        }
+
+        if (jwt.payload.credentialSubject && jwt.payload.credentialSubject.encodedList) {
+            this.cachedLists[statusList] = {
+                id: jwt.payload.credentialSubject.encodedList,
+                purpose: jwt.payload.credentialSubject.statusPurpose ?? 'revocation',
+                retrieved: new Date(),
+                expires: moment().add(60 * 60, 's').toDate()
             }
+            return;
+        }
+        if (jwt.payload.vc?.credentialSubject && jwt.payload.vc?.credentialSubject.encodedList) {
+            this.cachedLists[statusList] = {
+                id: jwt.payload.vc!.credentialSubject.encodedList,
+                purpose: jwt.payload.vc!.credentialSubject.statusPurpose ?? 'revocation',
+                retrieved: new Date(),
+                expires: moment().add(60 * 60, 's').toDate()
+            }
+            return;
         }
         throw new Error('STATUSLIST_INVALID:Statuslist does not contain an encodedList claim');
     }
