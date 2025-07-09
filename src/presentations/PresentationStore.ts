@@ -1,9 +1,15 @@
 import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from "@utils/resolveConfPath";
-import { PresentationDefinitionV2 } from '@sphereon/pex-models';
+
+export interface PresentationDefinition {
+    id: string;
+    name: string;
+    purpose: string;
+    query: any;
+}
 
 interface StoreType {
-    [x:string]: PresentationDefinitionV2;
+    [x:string]: PresentationDefinition;
 }
 
 var _store:StoreType = {};
@@ -12,8 +18,8 @@ export function getPresentationStore() {
     return _store;
 }
 
-export function initialisePresentationStore() {
-    const options = loadJsonFiles<PresentationDefinitionV2>({path: resolveConfPath('presentations')});
+export async function initialisePresentationStore() {
+    const options = loadJsonFiles<PresentationDefinition>({path: resolveConfPath('presentations')});
     for (const opt of options.asArray) {
         _store[opt.id] = opt;
     }   

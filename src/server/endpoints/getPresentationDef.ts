@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import { sendErrorResponse } from '@sphereon/ssi-express-support';
+import { sendErrorResponse } from '../sendErrorResponse';
 import { openObserverLog } from '@utils/openObserverLog';
 import { Request } from 'express'
 import { Verifier } from 'verifier/Verifier';

@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import { Request, Response } from 'express'
-import { sendErrorResponse } from '@sphereon/ssi-express-support'
+import { sendErrorResponse } from '../sendErrorResponse';
 
 import { Verifier } from 'verifier/Verifier';
 import passport from 'passport';

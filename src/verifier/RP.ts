@@ -1,16 +1,13 @@
 import { Verifier } from "./Verifier";
-import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, JWTVerified } from "externals";
-import { AuthorizationRequestPayload, ResponseMode, ResponseType, RPRegistrationMetadataPayload, Scope, SubjectType } from '@sphereon/did-auth-siop'
 import { v4 } from 'uuid';
-import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
-import { IPresentation } from "@sphereon/ssi-types";
-import { IAgent, IKey, IKeyManager } from "@veramo/core";
-import { agent, resolver } from 'agent';
 import { ExtractedCredential, PresentationSubmission, StatusList } from "./PresentationSubmission";
 import { createJWT, verifyJWT } from 'externals';
 import { openObserverLog } from "@utils/openObserverLog";
 import { Message } from "types";
-import { JWTHeader } from "did-jwt";
+import { PresentationDefinition } from "presentations/PresentationStore";
+import { Factory } from "@muisit/cryptokey/*";
+import { JWT } from "jwt/JWT";
+import { AuthorizationRequest } from "types/authrequest";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -30,10 +27,10 @@ export interface VPResult {
 
 export class RP {
     public verifier:Verifier;
-    public presentation:PresentationDefinitionV2;
+    public presentation:PresentationDefinition;
 
     // session state values
-    public authorizationRequest:AuthorizationRequestPayload|undefined;
+    public authorizationRequest?:any;
     public jwt:string|undefined;
     public state:string|undefined;
     public nonce:string|undefined;
@@ -42,7 +39,7 @@ export class RP {
     public lastUpdate:Date;
     public result:VPResult|undefined;
 
-    public constructor(v:Verifier, p:PresentationDefinitionV2) {
+    public constructor(v:Verifier, p:PresentationDefinition) {
         this.verifier = v;
         this.presentation = p;
         this.created = new Date();
@@ -50,60 +47,54 @@ export class RP {
     }
 
     public async toJWT(payload:any, type:string):Promise<string> {
-        const header = {
+        const jwt = new JWT();
+        jwt.header = {
             alg: this.verifier.signingAlgorithm(),
-            kid: this.verifier.identifier!.did + '#' + this.verifier.key?.kid,
+            kid: this.verifier.did + '#' + Factory.getKeyReference(this.verifier.did),
             typ: type
-        } as Partial<JWTHeader>;
-        this.jwt = await createJWT(
-            payload,
-            {
-                issuer: this.verifier.identifier!.did,
-                signer: wrapSigner(agent, this.verifier.key!, this.verifier.signingAlgorithm()),
-                expiresIn: 10  *60,
-                canonicalize: false
-            },
-            header);
+        };
+        jwt.payload = payload;
+        jwt.sign(this.verifier.key!);
         this.lastUpdate = new Date();
-        return this.jwt!;
+        this.jwt = jwt.token;
+        return this.jwt;
     }
 
-    public createAuthorizationRequest(responseUri: string, presentationUri:string, state:string):AuthorizationRequestPayload {
+    public createAuthorizationRequest(responseUri: string, state:string): AuthorizationRequest {
         this.status = RPStatus.CREATED;
         this.nonce = v4();
         this.authorizationRequest = {
             // basic RequestObject attributes
-            "scope": Scope.OPENID,
-            "response_type": ResponseType.VP_TOKEN,
-            "client_id": this.verifier.clientId(),
-            "client_id_scheme": "did", // UniMe workaround
-            //"redirect_uri": redirectUri,
-            "response_uri": responseUri,
-            "nonce": this.nonce,
+            "response_type": 'vp_token', // instructs the wallet to return a vp_token response
+            "response_mode": "direct_post", // default is using query or fragment elements in the callback
             "state": state,
+            "client_id": 'decentralized_identifier:' + this.verifier.clientId(),
+            //"scope": // used for predefined dcql queries
+            "redirect_uri": responseUri,
+            "client_id_scheme": "did", // UniMe workaround
+            "nonce": this.nonce,
 
             // AuthorizationRequest attributes
-            "response_mode": ResponseMode.DIRECT_POST, // default is using query or fragment elements in the callback
             "client_metadata": this.clientMetadata(),
-            "presentation_definition_uri": presentationUri,
+            "dcl_query": this.presentation.query,
         };
         this.lastUpdate = new Date();
         return this.authorizationRequest;
     }
 
-    private clientMetadata():RPRegistrationMetadataPayload {
+    private clientMetadata() {
         return {
-            "id_token_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
-            "request_object_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
-            "response_types_supported": [ResponseType.VP_TOKEN],
-            "scopes_supported": [Scope.OPENID],
-            "subject_types_supported": [SubjectType.PAIRWISE],
+            "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
+            "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
+            "response_types_supported": ['token'],
+            //"scopes_supported": [Scope.OPENID],
+            "subject_types_supported": ['pairwise'],
             "subject_syntax_types_supported": ['did:jwk', 'did:key'],
             "vp_formats": this.verifier.vpFormats()
         };
     }
 
-    public async processResponse(state:string, token:string, submission: PEXPresentationSubmission) {
+    public async processResponse(state:string, token:string, submission: any) {
         // whatever happens, our state switches to RESPONSE to indicate we received something
         this.status = RPStatus.PROCESSING;
 

@@ -1,7 +1,7 @@
 import Debug from 'debug'
 import { getEnv } from 'utils/getEnv';
 import { DataSource } from 'typeorm'
-import { Entities as VeramoDataStoreEntities, migrations as VeramoDataStoreMigrations } from '@veramo/data-store'
+import { Entities, migrations } from 'packages/datastore/index'
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions'
 
 const debug = Debug(`verifier:db`)
@@ -22,10 +22,10 @@ const dbConfig: PostgresConnectionOptions = {
   database: database,
   applicationName: schema,
   entities: [
-    ...VeramoDataStoreEntities,
+    ...Entities,
   ],
   migrations: [
-    ...VeramoDataStoreMigrations,
+    ...migrations,
   ],
   migrationsRun: false, // We run migrations from code to ensure proper ordering with Redux
   synchronize: false, // We do not enable synchronize, as we use migrations from code
