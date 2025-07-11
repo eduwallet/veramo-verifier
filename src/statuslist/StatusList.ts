@@ -72,13 +72,42 @@ export class StatusList
         return this.cachedLists[statusList];
     }
 
-    public async checkStatus(statusList:string, index:number): Promise<Message>
+    public async check(statusListEntry:any): Promise<Message>
     {
         const retval:Message = { code: '', message: ''};
+
+        let url:string;
+        let index:number;
+        let type:string;
+        switch (statusListEntry.type) {
+            default:
+            case 'BitstringStatusList':
+                url = statusListEntry.statusListCredential;
+                index = statusListEntry.statusListIndex;
+                type = 'bitstring';
+                break;
+            case 'StatusList2020':
+            case 'StatusList2021':
+            case 'RevocationList2020':
+            case 'RevocationList2021':
+            case 'SuspensionList2020':
+            case 'SuspensionList2021':
+            case 'BitstringStatusList':
+                url = statusListEntry.statusListCredential;
+                index = statusListEntry.statusListIndex;
+                type = 'statuslist';
+                break;
+            case 'status+jwt':
+                url = statusListEntry.uri;
+                index = statusListEntry.idx;
+                type = 'ietf';
+                break;
+        }
+
         var list:CachedList|null = null;
         
         try {
-            list = await this.getStatusList(statusList);
+            list = await this.getStatusList(url);
         }
         catch (e:any) {
             const errorElements = e.message.split(':');
@@ -87,6 +116,11 @@ export class StatusList
             return retval;
         }
 
+        let data;
+        let purpose = 'revocation';
+        switch (type) {
+
+        }
         const encoded = list!.id;
         const dataList = new Bitstring({buffer:await Bitstring.decodeBits({encoded})});
         if (dataList.get(index)) {

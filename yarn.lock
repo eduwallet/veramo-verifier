@@ -189,6 +189,13 @@
     jose "^6.0.11"
     multiformats "^13.3.2"
 
+"@muisit/simplejwt@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@muisit/simplejwt/-/simplejwt-1.0.1.tgz#0064c6212db1cd0f76fb8eecc44089ce5d9c93c4"
+  integrity sha512-d9c9rVxL6HVPHR5p5BK/KKL4Ftj21CbxbrA2udzck18KDL5qDN1RdWnJ+XLhX59J7RJ9+KdC5G/M5GUP/X9tIQ==
+  dependencies:
+    "@muisit/cryptokey" "^1.2.2"
+
 "@multiformats/base-x@^4.0.1":
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"

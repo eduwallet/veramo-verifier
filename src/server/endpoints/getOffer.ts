@@ -22,13 +22,15 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                     return sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
 
-                // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#section-5.10
+                // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10
                 // optional wallet_nonce in the request_uri call must be reflected in the authorization request
                 if (request.params.wallet_nonce) {
                     rp.authorizationRequest.wallet_nonce = request.params.wallet_nonce;
                 }
 
                 debug("sending", rp.authorizationRequest);
+                // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10.1
+                // "The Request URI response MUST be an HTTP response with the content type application/oauth-authz-req+jwt"
                 await rp.toJWT(rp.authorizationRequest, 'oauth-authz-req+jwt');
                 rp.status = RPStatus.RETRIEVED;
                 response.statusCode = 200

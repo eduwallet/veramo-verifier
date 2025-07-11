@@ -31,6 +31,8 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             const requestByReferenceURI = getBaseUrl() + replaceParamsInUrl(offerPath, {presentationid: presentationId, state:state});
             const responseURI = getBaseUrl() + replaceParamsInUrl(responsePath, {presentationid: presentationId, state:state});
             const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, { presentationid: presentationId, state:state });
+            // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
+            // "when using request_uri, the only other required parameter ... is client_id"
             const requestUri = 'openid://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
             openObserverLog(state, 'create-offer', { name: verifier.name, request: request.params});
 

@@ -70,6 +70,7 @@ export class Verifier {
     
     public clientId()
     {
+        // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.2.3
         return this.did; // workaround for UniMe, which only supports the client_id_scheme 'did'
     }
 
