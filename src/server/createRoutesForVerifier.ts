@@ -9,8 +9,8 @@ const debug = Debug(`verifier:server`)
 
 const create_offer_path = '/api/create-offer/:presentationid';
 const get_offer_path = '/get-offer/:state';
-const get_presentation_path = '/get-presentation/:presentationid';
-const response_path = '/response/:state';
+export const get_presentation_path = '/get-presentation/:presentationid';
+export const response_path = '/response/:state';
 const check_offer_path = '/api/check-offer/:state';
 const check_status_path = '/api/check-status';
 

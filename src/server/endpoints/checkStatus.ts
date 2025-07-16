@@ -5,7 +5,9 @@ import passport from 'passport';
 
 interface StatusRequest {
     statusList: string;
+    type: string;
     index: number;
+    size?:number;
 }
 
 export function checkStatus(verifier: Verifier, checkPath: string) {
@@ -13,7 +15,12 @@ export function checkStatus(verifier: Verifier, checkPath: string) {
         passport.authenticate(verifier.name + '-admin', { session: false }),
         async (request: Request<StatusRequest>, response: Response) => {
         try {
-            const result = await verifier.statusList.checkStatus(request.body.statusList, request.body.index);
+            const result = await verifier.statusList.check({
+                type: request.body.type,
+                url: request.body.statusList,
+                index: request.body.index,
+                size: request.body.size ?? 1
+            });
             return response.send(result);
         } catch (e) {
             return sendErrorResponse(response, 500, 'Could not determine RP session', e);

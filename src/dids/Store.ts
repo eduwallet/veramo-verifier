@@ -4,10 +4,10 @@ const debug = Debug('issuer:did');
  * Instantiate context configurations
  */
 
-import { loadJsonFiles } from "#root/utils/generic";
+import { loadJsonFiles } from "#root/utils/loadJsonFiles";
 import { Identifier, Key, PrivateKey } from "#root/packages/datastore/index";
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from '#root/database/databaseService';
+import { getDbConnection } from '#root/database';
 import { resolveConfPath } from '@utils/resolveConfPath';
 
 export interface DIDStoreValue {
@@ -95,11 +95,11 @@ class DIDConfigurationStore {
                 identifier.did = configuration.did;
                 break;
             case 'did:key':
-                identifier.did = await Factory.toDIDKey(configuration.key);
+                identifier.did = await Factory.toDIDKey(ckey);
                 break;
             default: // DIIPv4 uses did:jwk by default
             case 'did:jwk':
-                identifier.did = await Factory.toDIDJWK(configuration.key);
+                identifier.did = await Factory.toDIDJWK(ckey);
                 break;
         }
         identifier.alias = configuration.alias ?? configuration.did;

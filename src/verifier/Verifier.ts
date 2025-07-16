@@ -6,7 +6,7 @@ import { DIDDocument } from "did-resolver";
 import { getPresentationStore, PresentationDefinition } from "presentations/PresentationStore";
 import { StatusList } from "statuslist/StatusList";
 import { SessionStateManager } from '@utils/SessionStateManager';
-import { CryptoKey, Factory } from '@muisit/cryptokey/*';
+import { CryptoKey, Factory } from '@muisit/cryptokey';
 import { getDbConnection } from 'database';
 import { Identifier, PrivateKey } from 'packages/datastore';
 
@@ -71,7 +71,7 @@ export class Verifier {
     public clientId()
     {
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.2.3
-        return this.did; // workaround for UniMe, which only supports the client_id_scheme 'did'
+        return this.identifier!.did; // workaround for UniMe, which only supports the client_id_scheme 'did'
     }
 
     public basePath()
@@ -79,11 +79,8 @@ export class Verifier {
         return getBaseUrl() + '/' + this.name;
     }
 
-    public getRPForPresentation(presentationId:string, state:string): RP {
-        const rp = new RP(this, this.getPresentation(presentationId)!);
-        this.sessions[state] = rp;
-        rp.state = state;
-        return rp;
+    public async getRPForPresentation(presentationId:string): Promise<RP> {
+        return new RP(this, this.getPresentation(presentationId)!);
     }
 
     public signingAlgorithm():string
@@ -103,11 +100,11 @@ export class Verifier {
     }
 
     public async getDidDoc():Promise<DIDDocument> {
-        if (!this.did.startsWith('did:web:')) {
+        if (!this.identifier!.did.startsWith('did:web:')) {
             throw new Error("no DID document for non-webbased did");
         }
-        const didDoc = await Factory.toDIDDocument(this.key!, this.did, [{
-            "id": this.did + '#oid4vp',
+        const didDoc = await Factory.toDIDDocument(this.key!, this.identifier!.did, [{
+            "id": this.identifier!.did + '#oid4vp',
             "type": "OID4VP",
             "serviceEndpoint": getBaseUrl()
         }

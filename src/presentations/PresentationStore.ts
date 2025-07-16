@@ -29,7 +29,8 @@ export interface PresentationDefinition {
     id: string;
     name: string;
     purpose: string;
-    query: any;
+    query?: any;
+    input_descriptors?:any;
 }
 
 interface StoreType {
