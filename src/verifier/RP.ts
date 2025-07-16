@@ -206,8 +206,6 @@ export class RP {
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        this.status = RPStatus.RESPONSE;
-
         if (this.presentation.query) {
             return await this.parseDCQLToken(vptoken);
         }

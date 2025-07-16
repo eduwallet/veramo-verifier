@@ -12,7 +12,6 @@
   "keywords": [],
   "author": "Michiel Uitdehaag <info@muisit.nl>",
   "license": "Apache-2.0",
-  "private": false,
   "files": [
     "src/**/*",
     "README.md",
@@ -38,7 +37,8 @@
   "dependencies": {
     "@digitalcredentials/bitstring": "^3.1.2",
     "@muisit/cryptokey": "^1.2.2",
-    "@muisit/simplejwt": "^1.0.1",
+    "@muisit/simplejwt": "1.0.2",
+    "@types/node": "^24.0.14",
     "@types/passport": "^1.0.16",
     "@types/passport-http-bearer": "^1.0.41",
     "@types/uuid": "^10.0.0",
@@ -54,6 +54,7 @@
     "pg": "^8.16.3",
     "ts-node": "^10.9.2",
     "typeorm": "^0.3.20",
+    "typescript": "^5.8.3",
     "uint8arrays": "^5.1.0",
     "uuid": "^10.0.0",
     "zlib": "^1.0.5"

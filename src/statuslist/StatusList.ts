@@ -55,8 +55,8 @@ export class StatusList
             case 'BitstringStatusListEntry':
                 url = statusListEntry.statusListCredential;
                 index = statusListEntry.statusListIndex;
-                size = parseInt(statusListEntry.statusSize);
-                messages = statusListEntry.statusMessage || [];
+                size = parseInt(statusListEntry.statusSize || '1');
+                messages = statusListEntry.statusMessage || null;
                 type = 'bitstring';
                 purpose = 'unknown';
                 break;
@@ -120,10 +120,9 @@ export class StatusList
         const encoded = list!.data;
         const dataList = new Bitstring({buffer:await Bitstring.decodeBits({encoded})});
         const value = this.getStateValue(dataList, index, size);
-        const repr = '0x' + value.toString(16);
         let message:StatusMessage|null = null;
         for (const msg of messages) {
-            if (msg.status == repr) {
+            if (parseInt(msg.status) === value) {
                 message = msg;
                 break;
             }
@@ -170,16 +169,16 @@ export class StatusList
     {
         if (size === 1) {
             return [{
-                "status": "0x00",
+                "status": "0x0",
                 "message": purpose == 'revocation' ? 'unrevoked' : (purpose == 'suspension' ? 'unsuspended' : 'unset')
             },{
-                "status": "0x01",
+                "status": "0x1",
                 "message": purpose == 'revocation' ? 'revoked' : (purpose == 'suspension' ? 'suspended' : 'set')
             }]
         }
         else {
             let retval:StatusMessage[] = [];
-            for (let i = 0; i < (1 << size); i++) {
+            for (let i = 0; i <= (1 << size); i++) {
                 retval.push({
                     status: "0x" + i.toString(16),
                     message: i.toString()
@@ -261,7 +260,7 @@ export class StatusList
                     if (entry.purpose == 'unknown') {
                         entry.purpose = jwt.payload.credentialSubject.statusPurpose;
                     }
-                    entry.data = await this.toBitstring(await this.decodeBitstring(jwt.payload.status_list.lst));
+                    entry.data = await this.toBitstring(await this.decodeBitstring(jwt.payload.credentialSubject.encodedList));
                 }
                 else {
                     throw new Error(`STATUSLIST_INVALID:Missing fields in BitstringStatusList`);
@@ -274,7 +273,7 @@ export class StatusList
                     if (entry.purpose == 'unknown') {
                         entry.purpose = jwt.payload.credentialSubject.statusPurpose;
                     }
-                    entry.data = await this.toBitstring(await this.decodeStatuslist(jwt.payload.status_list.lst));
+                    entry.data = await this.toBitstring(await this.decodeStatuslist(jwt.payload.credentialSubject.encodedList));
                 }
                 else {
                     throw new Error(`STATUSLIST_INVALID:Missing fields in StatusList2020/StatusList2021`);
