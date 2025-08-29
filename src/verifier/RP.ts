@@ -9,7 +9,6 @@ import { AuthorizationRequest } from "types/authrequest";
 import { AuthorizationResponse, Presentation, PresentationResult } from "types/authresponse";
 import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
-import { fromString } from "uint8arrays";
 import { PresentationSubmission } from "./PresentationSubmission";
 
 export enum RPStatus {

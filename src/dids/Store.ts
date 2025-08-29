@@ -82,8 +82,9 @@ class DIDConfigurationStore {
     }
 
     private async initialiseKey(configuration:DIDConfiguration): Promise<DIDStoreValue>
-    {        
-        const ckey = await Factory.createFromType(configuration.type || 'Secp256r1');
+    {
+        const kType = configuration.type || 'Secp256r1';
+        const ckey = await Factory.createFromType(kType);
         await ckey.createPrivateKey();
 
         const identifier = new Identifier();
@@ -113,7 +114,7 @@ class DIDConfigurationStore {
         const dbKey = new Key();
         dbKey.kid = ckey.exportPublicKey();
         dbKey.kms = 'local';
-        dbKey.type = configuration.type;
+        dbKey.type = ckey.keyType;
         dbKey.publicKeyHex = dbKey.kid;
         dbKey.identifier = identifier;
         const krepo = dbConnection.getRepository(Key);
