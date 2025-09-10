@@ -82,16 +82,16 @@ export class RP {
     }
 
     public clientMetadata() {
-        return {
+        return Object.assign({}, {
             "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
-            "response_types_supported": ['vp_token', 'id_token'],
+            "response_types_supported": ['vp_token'], // , 'id_token',
             //"scopes_supported": [Scope.OPENID],
             "subject_types_supported": ['pairwise'],
             // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.5
             "subject_syntax_types_supported": ['did:jwk', 'did:key'],
             "vp_formats": this.verifier.vpFormats()
-        };
+        }, this.verifier.metadata ?? {});
     }
 
     public async parseIDToken(token:string)

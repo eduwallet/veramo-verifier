@@ -16,6 +16,7 @@ export interface VerifierOptions {
     adminToken:string;
     path:string;
     presentations:string[];
+    metadata?: any;
 }
 
 interface RPSessions {
@@ -35,6 +36,7 @@ export class Verifier {
     public presentations:string[];
     public sessions:RPSessions = {};
     public statusList:StatusList;
+    public metadata?:any;
 
     public constructor(opts:VerifierOptions)
     {
@@ -46,6 +48,7 @@ export class Verifier {
         this.sessionManager = new SessionStateManager();
         this.presentations = opts.presentations;
         this.statusList = new StatusList();
+        this.metadata = opts.metadata;
     }
 
     public async initialise() {
@@ -90,11 +93,14 @@ export class Verifier {
 
     public vpFormats():any {
         return {
-            "jwt_vc": {
+            "jwt_vc_json": {
                 "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
-            "jwt_vp": {
-                "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+            "vc+sd-jwt": {
+                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+            },
+            "dc+sd-jwt": {
+                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             }
         };
     }

@@ -8,7 +8,7 @@ export function createRequest_v28(rp:RP)
     const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.state});
     return {
         // basic RequestObject attributes
-        "response_type": 'vp_token id_token', // instructs the wallet to return a vp_token response with a SIOP id_token
+        "response_type": 'vp_token', // instructs the wallet to return a vp_token
         "response_mode": "direct_post", // default is using query or fragment elements in the callback
         "state": rp.state,
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.9.3
