@@ -4,3 +4,4 @@ dist
 tsconfig.tsbuildinfo
 conf
 yarn-error.log
+.yarn

@@ -27,17 +27,103 @@ Run `yarn` to install the basic packages:
 
 ## Configuration
 
-Configuration falls into three rough categories:
+Configuration falls into three categories:
 
 - dids
-- verifiable presentations
-- instances
+- presentations
+- verifiers
+
+### DIDs
 
 The dids are configured in the `conf/dids` path and describe how to create the key if it does not yet exist in the database. Each key has an alias that can be referenced in the `instance` specification.
 
-The verifiable presentations are JSON documents describing the request for a specific credential, according to the https://identity.foundation/presentation-exchange/spec/v2.0.0/ specification on Presentation Exchange. Each such presentation is defined by the `id` attribute in the document.
+An example configuration looks like:
 
-The `instances` are a set of endpoints that are callable by front-end-verifiers and wallets. For each `instance` the configuration specifies the `subpath`, the administrator bearer `token`, the `did` used for this `instance` and the Verifiable Presentations that are allowed (by id).
+```json
+{
+    "alias": "did:jwk:secp256r1",
+    "provider": "did:jwk",
+    "type": "Secp256r1"
+}
+```
+
+This defines a `did:jwk` key (`provider`) of type `secp256r1` (aka `p-256`) and supplies an alias that can be used elsewhere.
+
+### Presentations
+
+The verifiable presentations are JSON documents in the `conf/presentations` path, describing the request for a specific credential. The presentations can either contain a PEX request, according to the https://identity.foundation/presentation-exchange/spec/v2.0.0/ specification on Presentation Exchange. Or they contain a `dcql` query.
+
+Each such presentation is defined by the `id` attribute in the document.
+
+An example looks like:
+
+```json
+{
+    "id": "ABC",
+    "name": "ABC Proeftuin Credential",
+    "purpose": "Proeftuin requires the credential content",
+    "input_descriptors": [{
+        "id": "ABC",
+        "name": "ABC Proeftuin Credential",
+        "purpose": "Proeftuin requires the credential content",
+        "schema": [{
+            "uri": "AcademicBaseCredential"
+        }],
+        "constraints": {
+            "fields": [{
+                "path": ["$.credentialSubject.id"]
+            }]
+        }
+    }]
+}
+```
+
+This defines a PEX presentation by using the `input_descriptors` attribute. The presentation is named `ABC` and it requests a credential of type `AcademicBaseCredential` (`input_descriptors.schema.uri`). It requests the `credentialSubject.id` field, but because this is a `jwt_vc_json` type of credential, the wallet will return the complete and fully disclosed credential.
+
+An example using `dcql`:
+
+```json
+{
+    "id": "GC",
+    "name": "Generic Proeftuin Credential",
+    "purpose": "Proeftuin requires the credential content",
+    "query": {
+      "credentials": [{
+        "id": "GC",
+        "format": "jwt_vc_json",
+        "claims": [{
+          "path": ["credentialSubject", "id"]
+        }]
+      }]
+    }
+}
+```
+
+This example uses the `query` attribute to specify the `dcql` query for the presentation. This query is integrated in the authorization request and not available as a separate presentation. The query requests a credential of format `jwt_vc_json` with an attribute `credentialSubject.id`. 
+
+### Verifiers
+
+The `conf/verifiers` are a set of endpoints that are callable by front-end-verifiers and wallets. For each `instance` the configuration specifies the `subpath`, the administrator bearer `token`, the `did` used for this `instance` and the Verifiable Presentations that are allowed (by id).
+
+Example:
+
+```json
+{
+    "name": "sportscentre",
+    "did": "did:jwk:secp256r1",
+    "adminToken": "secrettoken",
+    "path": "/sportscentre",
+    "presentations": ["GC", "ABC", "PID"],
+    "metadata": {
+        "client_name": "University Sports Centre",
+        "description": "Sports Centre credential verification test",
+        "logo_uri": "logo-url",
+        "location": "Harderwijk"
+    }
+}
+```
+
+This example defines a verifier endpoint for the `sportscentre`. The `adminToken` is used for front-end interaction. The verifier refers to a previously configured `did` using the `did` attribute, which contains an alias. 
 
 ## Interfaces
 
@@ -102,22 +188,27 @@ When the last status is returned, the response object is extended with the `resu
     "state": "cb3349e1-8415-4d96-bd40-d03663836ad5",
     "nonce": "8472d4aa-0429-4084-8596-b6adebf7248c",
     "issuer": "<did key of the VP signer (should be the wallet)>",
-    "credentials": [{
-      "holder": "<did key of the VC holder (wallet)>",
-      "issuerKey": "<did key of the VC issuer>",
-      "issuer": "<VC issuer id, which currently equals the issuerKey>",
-      "claims": {
-        [x:string]: string|number
-      },
-      "statusLists": [{
-        "id": "<status list entry id>",
-        "type": "<type of this status list>",
-        "statusPurpose": "<purpose, one of revocation or suspension>",
-        "statusListIndex": "<unique numeric index>",
-        "statusListCredential": "<status list credential url>"
-      }],
-      "payload": "<JWT payload content>"
-    }],
+    "credentials": {
+      "<credential-type-identifier>": [{
+        "holder": "<did key of the VC holder (wallet)>",
+        "issuerKey": "<did key of the VC issuer>",
+        "issuer": "<VC issuer id, which currently equals the issuerKey>",
+        "claims": {
+          [x:string]: string|number
+        },
+        "metadata": {
+          "statusLists": [{
+            "id": "<status list entry id>",
+            "type": "<type of this status list>",
+            "statusPurpose": "<purpose, one of revocation or suspension>",
+            "statusListIndex": "<unique numeric index>",
+            "statusListCredential": "<status list credential url>"
+          }],
+          "evidence": [{<evidence data>}]
+        },
+        "payload": "<JWT payload content>"
+      }]
+    }
     "messages": [{
       "code": "<message code>",
       "message": "<message description>",

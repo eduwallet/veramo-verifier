@@ -1,16 +1,15 @@
 import { Verifier } from "./Verifier";
-import { PresentationDefinitionV2, PresentationSubmission as PEXPresentationSubmission, JWTVerified } from "externals";
-import { AuthorizationRequestPayload, ResponseMode, ResponseType, RPRegistrationMetadataPayload, Scope, SubjectType } from '@sphereon/did-auth-siop'
 import { v4 } from 'uuid';
-import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
-import { IPresentation } from "@sphereon/ssi-types";
-import { IAgent, IKey, IKeyManager } from "@veramo/core";
-import { agent, resolver } from 'agent';
-import { ExtractedCredential, PresentationSubmission, StatusList } from "./PresentationSubmission";
-import { createJWT, verifyJWT } from 'externals';
-import { openObserverLog } from "@utils/openObserverLog";
+import { DCQLSubmission, ExtractedCredential } from "./DCQLSubmission";
 import { Message } from "types";
-import { JWTHeader } from "did-jwt";
+import { PresentationDefinition } from "presentations/PresentationStore";
+import { Factory } from "@muisit/cryptokey";
+import { JWT } from "@muisit/simplejwt";
+import { AuthorizationRequest } from "types/authrequest";
+import { AuthorizationResponse, Presentation, PresentationResult } from "types/authresponse";
+import { createRequest_v28 } from "./createRequest_v28";
+import { createRequest_v25 } from "./createRequest_v25";
+import { PresentationSubmission } from "./PresentationSubmission";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -20,9 +19,13 @@ export enum RPStatus {
     RESPONSE = 'RESPONSE_RECEIVED'
 }
 
+interface Credentials {
+    [x:string]: ExtractedCredential[];
+}
+
 export interface VPResult {
     issuer?:string;
-    credentials?:ExtractedCredential[];
+    credentials?:Credentials;
     nonce?:string|undefined;
     state:string|undefined;
     messages:Message[];
@@ -30,11 +33,10 @@ export interface VPResult {
 
 export class RP {
     public verifier:Verifier;
-    public presentation:PresentationDefinitionV2;
+    public presentation:PresentationDefinition;
 
     // session state values
-    public authorizationRequest:AuthorizationRequestPayload|undefined;
-    public jwt:string|undefined;
+    public authorizationRequest?:any;
     public state:string|undefined;
     public nonce:string|undefined;
     public status:RPStatus = RPStatus.INIT;
@@ -42,7 +44,7 @@ export class RP {
     public lastUpdate:Date;
     public result:VPResult|undefined;
 
-    public constructor(v:Verifier, p:PresentationDefinitionV2) {
+    public constructor(v:Verifier, p:PresentationDefinition) {
         this.verifier = v;
         this.presentation = p;
         this.created = new Date();
@@ -50,60 +52,105 @@ export class RP {
     }
 
     public async toJWT(payload:any, type:string):Promise<string> {
-        const header = {
+        const jwt = new JWT();
+        jwt.header = {
             alg: this.verifier.signingAlgorithm(),
-            kid: this.verifier.identifier!.did + '#' + this.verifier.key?.kid,
+            kid: this.verifier.identifier!.did + '#' + Factory.getKeyReference(this.verifier.identifier!.did),
             typ: type
-        } as Partial<JWTHeader>;
-        this.jwt = await createJWT(
-            payload,
-            {
-                issuer: this.verifier.identifier!.did,
-                signer: wrapSigner(agent, this.verifier.key!, this.verifier.signingAlgorithm()),
-                expiresIn: 10  *60,
-                canonicalize: false
-            },
-            header);
+        };
+        jwt.payload = payload;
+
+        await jwt.sign(this.verifier.key!);
         this.lastUpdate = new Date();
-        return this.jwt!;
+        return jwt.token;
     }
 
-    public createAuthorizationRequest(responseUri: string, presentationUri:string, state:string):AuthorizationRequestPayload {
+    public createAuthorizationRequest(): AuthorizationRequest {
         this.status = RPStatus.CREATED;
         this.nonce = v4();
-        this.authorizationRequest = {
-            // basic RequestObject attributes
-            "scope": Scope.OPENID,
-            "response_type": ResponseType.VP_TOKEN,
-            "client_id": this.verifier.clientId(),
-            "client_id_scheme": "did", // UniMe workaround
-            //"redirect_uri": redirectUri,
-            "response_uri": responseUri,
-            "nonce": this.nonce,
-            "state": state,
-
-            // AuthorizationRequest attributes
-            "response_mode": ResponseMode.DIRECT_POST, // default is using query or fragment elements in the callback
-            "client_metadata": this.clientMetadata(),
-            "presentation_definition_uri": presentationUri,
-        };
+        if (this.presentation.query) {
+            this.authorizationRequest = createRequest_v28(this);
+        }
+        else if (this.presentation.input_descriptors) {
+            this.authorizationRequest = createRequest_v25(this);
+        }
+        else {
+            throw new Error("missing query values");
+        }
         this.lastUpdate = new Date();
         return this.authorizationRequest;
     }
 
-    private clientMetadata():RPRegistrationMetadataPayload {
-        return {
-            "id_token_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
-            "request_object_signing_alg_values_supported": [SigningAlgo.EDDSA, SigningAlgo.ES256],
-            "response_types_supported": [ResponseType.VP_TOKEN],
-            "scopes_supported": [Scope.OPENID],
-            "subject_types_supported": [SubjectType.PAIRWISE],
+    public clientMetadata() {
+        return Object.assign({}, {
+            "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
+            "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
+            "response_types_supported": ['vp_token'], // , 'id_token',
+            //"scopes_supported": [Scope.OPENID],
+            "subject_types_supported": ['pairwise'],
+            // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.5
             "subject_syntax_types_supported": ['did:jwk', 'did:key'],
             "vp_formats": this.verifier.vpFormats()
-        };
+        }, this.verifier.metadata ?? {});
     }
 
-    public async processResponse(state:string, token:string, submission: PEXPresentationSubmission) {
+    public async parseIDToken(token:string)
+    {
+        // this implements parsing the SIOPv2 id_token
+        let jwt:JWT;
+        try {
+            jwt = JWT.fromToken(token);
+            // should not occur
+            if (!jwt) {
+                return false;
+            }
+        }
+        catch (e) {
+            this.result!.messages.push({
+                code: 'INVALID_JWT',
+                message: 'Could not decode JWT',
+                jwt: token
+            });
+            return false;
+        }
+
+        // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-11
+        // iss and sub must be equal
+        // TODO: Sphereon only sends iss, not sub....
+        if (jwt.payload?.iss && jwt.payload?.sub && jwt.payload.iss != jwt.payload.sub) {
+            this.result!.messages.push({
+                code: 'INVALID_JWT',
+                message: 'iss and sub claims invalid',
+                jwt: token
+            });
+            return false;
+        }
+        else {
+            const skey = await Factory.resolve(jwt.payload!.iss);
+            if (!skey) {
+                this.result!.messages.push({
+                    code: 'INVALID_JWT',
+                    message: 'Could not find a signing key',
+                    jwt: token
+                });
+                return false;
+            }
+            else {
+                if (!jwt.verify(skey)) {
+                    this.result!.messages.push({
+                        code: 'INVALID_JWT',
+                        message: 'Signature could not be validated',
+                        jwt: token
+                    });
+                    return false;
+                }
+            }
+        }
+        this.result!.issuer = jwt.payload!.iss;
+        return true;
+    }
+
+    public async processResponse(state:string, response:AuthorizationResponse, submission: any) {
         // whatever happens, our state switches to RESPONSE to indicate we received something
         this.status = RPStatus.PROCESSING;
 
@@ -125,136 +172,105 @@ export class RP {
             return this.result;
         }
 
-        var jwt:JWTVerified|null = null;
-        try {
-            jwt = await verifyJWT(
-                token,
-                {
-                    resolver: resolver,
-                    audience: this.authorizationRequest?.client_id
-                });
-            if (!jwt) {
-                throw new Error("no JWT found");
-            }
-        }
-        catch (e:any) {
+        // we expect an id_token in the response to signal the wallet holder key
+        if (!response.id_token)
+        {
             this.result!.messages.push({
-                code: 'INVALID_JWT',
-                message: 'Response JWT is corrupt',
-                error: e,
-                jwt: token
+                code: 'INVALID_RESPONSE',
+                message: 'Missing id_token'
             });
-            // no need to carry on, the rest of the code only revolves around validating the JWT content, but there is no JWT
-            this.status = RPStatus.RESPONSE;
-            return this.result;
+        }
+        else {
+            if(!await this.parseIDToken(response.id_token)) {
+                this.result!.messages.push({
+                    code: 'INVALID_ID_TOKEN',
+                    message: 'Could not parse and validate ID token',
+                    payload: response.id_token
+                });
+                }
         }
 
-        if (jwt !== null) {
-            this.result.issuer = jwt.issuer;
-            this.result.nonce = jwt.payload.nonce;
-            openObserverLog(state, 'receive-response', { name: this.verifier.name, request: jwt});
-
-            if (!jwt.verified) {
-                this.result!.messages.push({
-                    code: 'UNVERIFIED_JWT',
-                    message: 'Could not verify JWT token',
-                    jwt: token,
-                    signer: jwt.signer,
-                    issuer: jwt.issuer,
-                    payload: jwt.payload
-                });
-            }
-
-            if (!jwt.payload.verifiableCredential || !Array.isArray(jwt.payload.verifiableCredential)) {
-                this.result!.messages.push({
-                    code: 'NO_CREDENTIALS_FOUND',
-                    message: 'Decoded JWT does not contain credentials',
-                    payload: jwt.payload
-                });
-            }
-
-            if (jwt.payload.nonce != this.nonce) {
-                this.result!.messages.push({
-                    code: 'INVALID_NONCE',
-                    message: 'Nonce value of JWT does not match expected value',
-                    expectedNonce: this.nonce,
-                    receivedNonce: jwt.payload.nonce
-                });
-            }
-
-            if (jwt.payload.verifiableCredential && Array.isArray(jwt.payload.verifiableCredential)) {
-                const presentationSubmission = new PresentationSubmission(jwt.payload as IPresentation, this.presentation, submission, this.verifier.did);
-                try {
-                    const verifyMessages = await presentationSubmission.verify();
-                    if (verifyMessages.length > 0) {
-                        this.result!.messages = this.result!.messages.concat(verifyMessages);
-                    }
-                }
-                catch (e) {
-                    this.result!.messages.push({
-                        code: 'INVALID_PRESENTATION',
-                        message: 'Validation of presentation failed',
-                        error: e
-                    });
-                }
-                openObserverLog(state, 'receive-response', { name: this.verifier.name, presentation: presentationSubmission});
-                this.result.credentials = presentationSubmission.credentials;
-
-                for(const credential of this.result.credentials) {
-                    const messages = await this.validateStatusLists(credential);
-
-                    if (messages.length > 0) {
-                        this.result!.messages = this.result!.messages.concat(messages);
-                    }
-                }
-            }
+        if (response.vp_token) {
+            await this.parseVPToken(response.vp_token);
+        }
+        else {
+            this.result!.messages.push({
+                code: 'INVALID_RESPONSE',
+                message: 'Missing vp_token'
+            });
         }
         this.status = RPStatus.RESPONSE;
         return this.result;
     }
 
-    private async validateStatusLists(credential:ExtractedCredential): Promise<Message[]>
+    private async parseVPToken(vptoken:PresentationResult) 
     {
-        const retval:Message[] = [];
-
-        if (credential.statusLists && credential.statusLists.length) {
-            for (const statusList of credential.statusLists) {
-                const message = await this.validateStatusList(statusList);
-                if (message.code.length > 0) {
-                    retval.push(message);
-                }
-            }
+        if (this.presentation.query) {
+            return await this.parseDCQLToken(vptoken);
         }
         else {
-            retval.push({code:'NO_STATUS_LIST', message:'Credential does not implement a status list'});
+            return await this.parsePresentation(vptoken as unknown as Presentation);
         }
-
-        return retval;
     }
 
-    private async validateStatusList(statusList:StatusList):Promise<Message>
+    private async parseDCQLToken(vptoken:PresentationResult)
     {
-        var retval:Message = {code:'', message:''};
-        if (statusList.statusListCredential) {
-            try {
-                retval = await this.verifier.statusList.checkStatus(statusList.statusListCredential, parseInt(statusList.statusListIndex));
-            }
-            catch (e) {
-                retval.code = 'STATUSLIST_UNREACHABLE';
-                retval.message = 'Statuslist could not be retrieved';
-            }
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-8.1
+        //  vp_token: REQUIRED. This is a JSON-encoded object containing entries where the key is the id value used for a Credential Query in the DCQL query and the value is an array of one or more Presentations that match the respective Credential Query. 
+        if (!vptoken || Object.keys(vptoken).length == 0) {
+            this.result!.messages.push({
+                code: 'NO_CREDENTIALS_FOUND',
+                message: 'Response does not contain credentials',
+                payload: vptoken
+            });
+            return;
         }
-        return retval;       
-    }
-}
 
-function wrapSigner(
-    agent:IAgent & IKeyManager,
-    key: IKey,
-    algorithm?: string,
-  ) {
-    return async (data: string | Uint8Array): Promise<string> => {
-        const result = await agent.keyManagerSign({ keyRef: key.kid, data: <string>data, algorithm })
-        return result
+        this.result!.credentials = {};
+        for (const presId of this.presentation.query.credentials) {
+            const submission = new DCQLSubmission(this, presId, this.presentation.query.credentials[presId], vptoken[presId]);
+
+            await submission.validate();
+            if (submission.messages.length) {
+                this.result!.messages = this.result!.messages.concat(submission.messages);
+            }
+
+            this.result!.credentials[presId] = submission.credentials;
+        }
+        return this.result;
+    }
+
+    private async parsePresentation(vptoken:Presentation)
+    {
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-22.html#section-7.1
+        // vp_token: REQUIRED. 
+        // In case Presentation Exchange was used, it is a JSON String or JSON object that MUST contain a single
+        // Verifiable Presentation or an array of JSON Strings and JSON objects each of them containing a
+        // Verifiable Presentations. Each Verifiable Presentation MUST be represented as a JSON string (that is a
+        // base64url-encoded value) or a JSON object depending on a format as defined in Appendix A of OpenID4VCI
+        if (!vptoken) {
+            this.result!.messages.push({
+                code: 'NO_CREDENTIALS_FOUND',
+                message: 'Response does not contain credentials',
+                payload: vptoken
+            });
+            return;
+        }
+
+        let tokens:string[] = vptoken as string[];
+        if (!Array.isArray(tokens) && typeof(vptoken) == 'string') {
+            tokens = [vptoken];
+        }
+        this.result!.credentials = {};
+        for (const token of tokens) {
+            const submission = new PresentationSubmission(this, token);
+
+            await submission.validate();
+            if (submission.messages.length) {
+                this.result!.messages = this.result!.messages.concat(submission.messages);
+            }
+
+            this.result!.credentials[submission.id] = submission.credentials;
+        }
     }
 }

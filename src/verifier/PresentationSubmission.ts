@@ -1,151 +1,206 @@
-import { PEX } from '@sphereon/pex';
-import { IPresentation, JWTVerified, PresentationSubmission as PEXPresentationSubmission, PresentationDefinitionV2, verifyJWT } from 'externals';
-import { resolver } from 'agent';
-import { JWTPayload } from '@sphereon/did-auth-siop';
 import { Message } from 'types';
 import moment from 'moment';
+import { RP } from './RP';
+import { JWT } from '@muisit/simplejwt';
+import { ExtractedCredential } from './DCQLSubmission';
+import { fromString } from 'uint8arrays';
+import { validateStatusLists } from './validateStatusLists';
+import { CryptoKey } from '@muisit/cryptokey/*';
 
-// https://identity.foundation/presentation-exchange/spec/v2.0.0/
-// Implementation of presentation exchange validation
-
-interface ClaimList {
-    [x:string]:string|number;
-}
-
-// https://w3c.github.io/vc-bitstring-status-list/#examples
-export interface StatusList {
-    id: string;
-    type: string;
-    statusPurpose: string;
-    statusListIndex: string
-    statusListCredential: string;
-}
-
-export interface ExtractedCredential {
-    issuerKey: string;
-    issuer?:string|undefined;
-    holder: string;
-    payload?: JWTPayload;
-    claims: ClaimList;
-    statusLists?: StatusList[];
+export interface MetaData {
+    [x:string]: any;
 }
 
 export class PresentationSubmission
 {
-    public presentation:IPresentation;
-    public submission:PEXPresentationSubmission;
-    public definition:PresentationDefinitionV2;
-    public pex:PEX;
+    public rp:RP;
+    public token:string;
+    public id:string = 'unknown';
+    public format:string = '';
     public credentials:ExtractedCredential[];
-    public aud:string;
+    public messages:Message[];
 
-    public constructor(presentation:IPresentation, definition:PresentationDefinitionV2, submission: PEXPresentationSubmission, did:string)
+    public constructor(rp:RP, token:string)
     {
-        this.presentation = presentation;
-        this.submission = submission;
-        this.definition = definition as PresentationDefinitionV2;
-        this.pex = new PEX();
+        this.rp = rp;
+        this.token = token;
         this.credentials = [];
-        this.aud = did;
+        this.messages = [];
     }
 
-    public async verify():Promise<Message[]>
+    public async validate()
     {
-        var retval:Message[] = [];
-        // extract the credentials from the presentation. 
-        for (const jwt of this.presentation.verifiableCredential!) {
+        await this.parseCredentialToken(this.token);
+    }
+
+    private async parseCredentialToken(token:string, holder?:string)
+    {
+        // this should be a VC, but Sphereon hands out a VP instead... old specs
+        // See if this may be a JWT
+        let payload:any;
+        try {
+            // take care of SD-JWTs
+            const elements = token.split('~');
+            const jwt = JWT.fromToken(elements[0]);
+            payload = jwt.payload;
+
+            let ckey:CryptoKey|null = null;
             try {
-                const decoded = await verifyJWT(
-                    jwt as string,
-                    {
-                        resolver: resolver,
-                        policies: { nbf: false, iat: false, exp: false, aud: false} // these cause exceptions before decoding
-                    });
-                if (!decoded.verified) {
-                    retval.push({code: 'INVALID_VC', message: 'Could not verify VerifiableCredential in presentation', decoded});
-                }
-                else {
-                    const now:number = Math.floor(Date.now() / 1000);
-
-                    if (decoded.payload.nbf && decoded.payload.nbf > now) {
-                        const nbf = moment(decoded.payload.nbf * 1000).toISOString();
-                        retval.push({code: 'VC_NBF_ERROR', message: `VC is not valid before ${nbf}`, nbf: decoded.payload.nbf, now});
-                    }
-                    if (decoded.payload.iat && decoded.payload.iat > now) {
-                        const iat = moment(decoded.payload.iat * 1000).toISOString();
-                        retval.push({code: 'VC_IAT_ERROR', message: `VC is issued in the future at ${iat}`, iat: decoded.payload.iat, now});
-                    }
-                    if (decoded.payload.exp && decoded.payload.exp <= now) {
-                        const exp = moment(decoded.payload.exp * 1000).toISOString();
-                        retval.push({code: 'VC_EXP_ERROR', message: `VC expired at ${exp}`, exp: decoded.payload.exp, now});
-                    }
-
-                    if (decoded.payload.aud && decoded.payload.aud != this.aud) {
-                        retval.push({code: 'VC_AUD_ERROR', message: `VC required a different audience`, aud: decoded.payload.aud, did: this.aud});
-                    }
-
-                    const ec:ExtractedCredential = this.extractVCJsonCredential(decoded);
-                    this.credentials.push(ec);
-                }
+                ckey = await jwt.findKey();
             }
             catch (e) {
-                retval.push({code: 'INVALID_VC', message: 'Error while verifying VerifiableCredential'});
+                ckey = null;
             }
-        }
-
-        try {
-            const { value, warnings, errors } = this.pex.evaluatePresentation(this.definition, this.presentation, { presentationSubmission: this.submission });
-            if(errors && errors.length > 0) {
-                retval.push({code: 'INVALID_PRESENTATION', message: 'Error while verifying VerifiablePresentation', value, warnings, errors});
+            if (!ckey) {
+                this.messages.push({
+                    code: 'JWT_UNVERIFIED',
+                    message: 'Could not determine signing key of credential JWT',
+                    payload: token
+                });
+            }
+            else if(!await jwt.verify(ckey)) {
+                this.messages.push({
+                    code: 'JWT_UNVERIFIED',
+                    message: 'Could not verify signature of credential JWT',
+                    payload: token
+                });
+            }
+            else {
+                this.messages.push({
+                    code: 'JWT_VERIFIED',
+                    message: 'Credential JWT verified'
+                });
             }
         }
         catch (e) {
-            retval.push({code: 'INVALID_PRESENTATION', message: 'Error while verifying VerifiablePresentation', error: e});
+            // not a JWT, maybe just base64url encoded JSON
+            try {
+                payload = JSON.parse(fromString(token, 'base64url'));
+            }
+            catch (e) {
+                this.messages.push({
+                    code: 'INCORRECT_TOKEN',
+                    message: 'Could not decode presentation response',
+                    payload: token
+                });
+                return;
+            }
         }
 
-        // It seems the whole implementation of presentationSubmission does not work (or at least the mutual interpretation does not match)
-        // When requesting $.credentialSubject.given_name, the return path is '$', with a path_nested $.vp.verifiableCredential[0]
-        // These paths both seem to point to the whole credential and not to the specific claim inside the credential.
-        // As long as the whole process does not support requesting more than 1 credential (DIIP restriction), it does not really matter
-        // of course: we always get the whole credential and the back-end can try and find out what to do with it.
-
-        return retval;
+        // TODO: implement json-ld signatures
+    
+        // if this is a VP, it has a type of VerifiablePresentation
+        if (payload.type && Array.isArray(payload.type) && payload.type.includes('VerifiablePresentation')) {
+            await this.parseVP(payload);
+        }
+        else if (payload.vc && payload.vc.type && Array.isArray(payload.vc.type) && payload.vc.type.includes('VerifiableCredential')) {
+            // a VCDM 1.1 credential
+            this.id = payload.vc.type.filter((v:string) => v != 'VerifiableCredential')[0];
+            this.format = 'jwt_vc_json';
+            await this.parseVCDMCredential(payload.vc, holder);
+        }
+        else if (payload.type && Array.isArray(payload.type) && payload.type.includes('VerifiableCredential')) {
+            this.id = payload.type.filter((v:string) => v != 'VerifiableCredential')[0];
+            this.format = 'vc+jwt';
+            await this.parseVCDMCredential(payload, holder);
+        }
+        else if (payload.vct && token.indexOf('~') > 0) {
+            // an SD-JWT
+            this.id = payload.vct;
+            this.format = 'dc+sd-jwt';
+            await this.parseSDCredential(payload, token, holder);
+        }
+        else {
+            this.messages.push({
+                code: 'UNSUPPORTED_VC',
+                message: 'Decoded response token could not be interpreted',
+                payload: payload
+            });
+        }
     }
 
-    private extractVCJsonCredential(jwt:JWTVerified):ExtractedCredential
+    private async parseVP(payload:any)
+    {
+        if (!payload?.aud || payload.aud != this.rp.verifier.clientId()) {
+            this.messages.push({code: 'INVALID_PRESENTATION', message: 'aud claim does not match client id of verifier', aud:payload.aud, clientId: this.rp.verifier.clientId()});
+        }
+        if (!payload?.nonce || payload.nonce != this.rp.nonce) {
+            this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.nonce});
+        }
+
+        const now:number = Math.floor(Date.now() / 1000);
+
+        if (payload?.nbf && payload.nbf > now) {
+            const nbf = moment(payload.nbf * 1000).toISOString();
+            this.messages.push({code: 'VC_NBF_ERROR', message: `VC is not valid before ${nbf}`, nbf: payload.nbf, now});
+        }
+        if (payload?.iat && payload.iat > now) {
+            const iat = moment(payload.iat * 1000).toISOString();
+            this.messages.push({code: 'VC_IAT_ERROR', message: `VC is issued in the future at ${iat}`, iat: payload.iat, now});
+        }
+        if (payload?.exp && payload.exp <= now) {
+            const exp = moment(payload.exp * 1000).toISOString();
+            this.messages.push({code: 'VC_EXP_ERROR', message: `VC expired at ${exp}`, exp: payload.exp, now});
+        }
+
+        if (!payload.verifiableCredential) {
+            this.messages.push({code: 'VC_ERROR', message: `no credentials found in presentation`, payload});
+        }
+        else {
+            for (const vc of payload.verifiableCredential) {
+                await this.parseCredentialToken(vc, payload.holder);
+            }
+        }
+    }
+
+    private async parseVCDMCredential(payload:any, holder?:string)
     {
         var ec:ExtractedCredential= {
-            issuerKey: jwt.issuer,
-            holder: jwt.payload.sub!,
-            issuer: jwt.payload.issuer.id ? jwt.payload.issuer.id : jwt.payload.issuer,
-            payload: jwt.payload,
-            claims: {}
+            holder,
+            issuer: payload?.iss,
+            claims: payload.credentialSubject,
+            metadata: {}
         };
 
-        if (jwt.payload.vc && jwt.payload.vc.credentialSubject) {
-            ec.claims = jwt.payload.vc.credentialSubject;
-        }
-        else if (jwt.payload.credentialSubject) {
-            ec.claims = jwt.payload.credentialSubject;
-        }
-
-        if (jwt.payload.vc && jwt.payload.vc.credentialStatus) {
-            if (Array.isArray(jwt.payload.vc.credentialStatus)) {
-                ec.statusLists = jwt.payload.vc.credentialStatus;
+        if (payload.credentialStatus) {
+            if (Array.isArray(payload.credentialStatus)) {
+                ec.metadata!.statusLists = payload.credentialStatus;
             }
             else {
-                ec.statusLists = [jwt.payload.vc.credentialStatus];
+                ec.metadata!.statusLists = [payload.credentialStatus];
             }
         }
-        else if (jwt.payload.credentialStatus) {
-            if (Array.isArray(jwt.payload.credentialStatus)) {
-                ec.statusLists = jwt.payload.credentialStatus;
+        if (payload?.status && payload?.status?.status_list) {
+            // if we have IETF Status Token lists, push it as a regular status list type
+            if (!ec.metadata!.statusLists) {
+                ec.metadata!.statusLists = [{type: 'status+jwt', ...payload?.status?.status_list}];
             }
             else {
-                ec.statusLists = [jwt.payload.credentialStatus];
+                ec.metadata!.statusLists.push({type: 'status+jwt', ...payload?.status?.status_list});
+            }
+        }
+        if (ec.metadata?.statusLists) {
+            const msgs = await validateStatusLists(this.rp, ec);
+            if (msgs.length) {
+                this.messages = this.messages.concat(msgs);
             }
         }
 
-        return ec;
+        if (payload.evidence) {
+            if (Array.isArray(payload.evidence)) {
+                ec.metadata!.evidence = payload.evidence;
+            }
+            else {
+                ec.metadata!.evidence = [payload.evidence];
+            }
+        }
+        this.credentials.push(ec);
     }
+
+    private async parseSDCredential(payload:any, token:string, holder?:string)
+    {
+        // TODO: Support SD-JWT
+    }
+
+    
 }

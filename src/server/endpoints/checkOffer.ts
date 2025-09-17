@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import { Request, Response } from 'express'
-import { sendErrorResponse } from '@sphereon/ssi-express-support'
+import { sendErrorResponse } from '../sendErrorResponse';
 
 import { Verifier } from 'verifier/Verifier';
 import passport from 'passport';
@@ -20,7 +20,8 @@ export function checkOffer(verifier: Verifier, checkPath: string) {
         passport.authenticate(verifier.name + '-admin', { session: false }),
         async (request: Request, response: Response<CheckOfferResponse>) => {
         try {
-            const rp = verifier.sessions[request.params.state];
+            const session = await verifier.sessionManager.get(request.params.state);
+            const rp = session.data.rp;
             if (!rp) {
                 return sendErrorResponse(response, 404, 'No authorization request could be found');
             }

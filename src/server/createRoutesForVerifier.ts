@@ -1,6 +1,5 @@
 import Debug from 'debug'
-import express from 'express'
-import { ExpressSupport } from "@sphereon/ssi-express-support";
+import express, {Express} from 'express'
 import { Verifier } from "verifier/Verifier";
 import { getBasePath } from '@utils/getBasePath';
 import { getBaseUrl } from '@utils/getBaseUrl';
@@ -10,16 +9,16 @@ const debug = Debug(`verifier:server`)
 
 const create_offer_path = '/api/create-offer/:presentationid';
 const get_offer_path = '/get-offer/:state';
-const get_presentation_path = '/get-presentation/:presentationid';
-const response_path = '/response/:state';
+export const get_presentation_path = '/get-presentation/:presentationid';
+export const response_path = '/response/:state';
 const check_offer_path = '/api/check-offer/:state';
 const check_status_path = '/api/check-status';
 
-export async function createRoutesForVerifier(verifier:Verifier, expressSupport:ExpressSupport) {
+export async function createRoutesForVerifier(verifier:Verifier, app:Express) {
     debug('creating routes for ', verifier.name);
 
     verifier.router = express.Router();
-    expressSupport.express.use(getBasePath(getBaseUrl() + verifier.path), verifier.router);
+    app.use(getBasePath(getBaseUrl() + verifier.path), verifier.router);
 
     createOffer(
         verifier,

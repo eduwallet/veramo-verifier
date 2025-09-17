@@ -1,20 +1,14 @@
-import { DIDDocument, IIdentifier, IKey, TKeyType } from "@veramo/core";
-import { agent } from '../agent';
-import { InMemoryRPSessionManager, PresentationVerificationResult } from '@sphereon/did-auth-siop'
-import { getKey } from '@sphereon/ssi-sdk-ext.did-utils'
 import { RP } from './RP'
 import { Router } from "express";
 import { EventEmitter } from "typeorm/platform/PlatformTools";
-import { Alg } from "@sphereon/oid4vci-common";
-import { toJwk, JwkKeyUse } from '@sphereon/ssi-sdk-ext.key-utils';
 import { getBaseUrl } from "@utils/getBaseUrl";
-import { VerificationMethod } from "did-resolver";
-import { getIdentifier } from "@utils/createDids";
-import { getPresentationStore } from "presentations/PresentationStore";
-
-import { PresentationDefinitionV2 } from 'externals';
-import { SigningAlgo } from "@sphereon/ssi-sdk.siopv2-oid4vp-common";
+import { DIDDocument } from "did-resolver";
+import { getPresentationStore, PresentationDefinition } from "presentations/PresentationStore";
 import { StatusList } from "statuslist/StatusList";
+import { SessionStateManager } from '@utils/SessionStateManager';
+import { CryptoKey, Factory } from '@muisit/cryptokey';
+import { getDbConnection } from 'database';
+import { Identifier, PrivateKey } from 'packages/datastore';
 
 export interface VerifierOptions {
     name:string;
@@ -22,26 +16,7 @@ export interface VerifierOptions {
     adminToken:string;
     path:string;
     presentations:string[];
-}
-
-// mapping key types to key output types in the DIDDocument
-const keyMapping: Record<TKeyType, string> = {
-    Secp256k1: 'EcdsaSecp256k1VerificationKey2019',
-    Secp256r1: 'EcdsaSecp256r1VerificationKey2019',
-    // we need JsonWebKey2020 output
-    Ed25519: 'Ed25519VerificationKey2018', 
-    X25519: 'X25519KeyAgreementKey2019',
-    Bls12381G1: 'Bls12381G1Key2020',
-    Bls12381G2: 'Bls12381G2Key2020'
-}
-  
-const algMapping: Record<TKeyType, Alg> = {
-    Ed25519: Alg.EdDSA,
-    X25519: Alg.EdDSA,
-    Secp256r1: Alg.ES256,
-    Secp256k1: Alg.ES256K,
-    Bls12381G1: Alg.ES256, // incorrect
-    Bls12381G2: Alg.ES256 // incorrect
+    metadata?: any;
 }
 
 interface RPSessions {
@@ -51,16 +26,17 @@ interface RPSessions {
 export class Verifier {
     public name:string;
     public did:string;
+    public identifier?:Identifier|null;
     public adminToken:string;
-    public identifier:IIdentifier|undefined;
-    public key:IKey|undefined;
+    public key?:CryptoKey;
     public router:Router|undefined;
     public path:string;
     public eventEmitter:EventEmitter;
-    public sessionManager:InMemoryRPSessionManager;
+    public sessionManager:SessionStateManager;
     public presentations:string[];
     public sessions:RPSessions = {};
     public statusList:StatusList;
+    public metadata?:any;
 
     public constructor(opts:VerifierOptions)
     {
@@ -69,25 +45,35 @@ export class Verifier {
         this.adminToken = opts.adminToken;
         this.path = opts.path;
         this.eventEmitter = new EventEmitter();
-        this.sessionManager = new InMemoryRPSessionManager(this.eventEmitter);
+        this.sessionManager = new SessionStateManager();
         this.presentations = opts.presentations;
         this.statusList = new StatusList();
+        this.metadata = opts.metadata;
     }
 
     public async initialise() {
-        // allow specifying a did or a did alias in the did field
-        var identifier = await getIdentifier(this.did, this.did);
-        if (!identifier) {
-            throw new Error(`invalid identifier configured for ${this.name}`);
+        const dbConnection = await getDbConnection();
+        const ids = dbConnection.getRepository(Identifier);
+        this.identifier = await ids.createQueryBuilder('identifier')
+            .innerJoinAndSelect("identifier.keys", "key")
+            .where('did=:did', {did: this.did})
+            .orWhere('alias=:alias', {alias: this.did})
+            .getOne();
+        
+        if (!this.did) {
+            throw new Error('Missing issuer did configuration');
         }
-        this.identifier = identifier;
-        // this must return a valid entry, unless we have a case of a bad configuration, in which case we can
-        // safely throw an exception
-        this.key = await getKey({identifier: this.identifier!, vmRelationship: "verificationMethod"}, {agent});
+        const dbKey = this.identifier!.keys[0];
+        const pkeys = dbConnection.getRepository(PrivateKey);
+        const pkey = await pkeys.findOneBy({alias:dbKey.kid});
+
+        this.key = await Factory.createFromType(dbKey.type, pkey?.privateKeyHex);
+
     }
     
     public clientId()
     {
+        // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.2.3
         return this.identifier!.did; // workaround for UniMe, which only supports the client_id_scheme 'did'
     }
 
@@ -96,76 +82,44 @@ export class Verifier {
         return getBaseUrl() + '/' + this.name;
     }
 
-    public getRPForPresentation(presentationId:string, state:string): RP {
-        const rp = new RP(this, this.getPresentation(presentationId)!);
-        this.sessions[state] = rp;
-        rp.state = state;
-        return rp;
-    }
-
-    public getPresentationVerificationCallback() {
-        return async (args:any):Promise<PresentationVerificationResult> => {
-            return {
-                verified: true
-            }
-        };
+    public async getRPForPresentation(presentationId:string): Promise<RP> {
+        return new RP(this, this.getPresentation(presentationId)!);
     }
 
     public signingAlgorithm():string
     {
-        return algMapping[this.key!.type];
+        return this.key!.algorithms()[0];
     }
 
     public vpFormats():any {
         return {
-            "jwt_vc": {
-                "alg": [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K]
+            "jwt_vc_json": {
+                "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
-            "jwt_vp": {
-                "alg": [SigningAlgo.EDDSA, SigningAlgo.ES256, SigningAlgo.ES256K]
+            "vc+sd-jwt": {
+                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+            },
+            "dc+sd-jwt": {
+                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             }
         };
     }
 
-    public getDidDoc ():DIDDocument {
-        if (!this.identifier?.did.startsWith('did:web:')) {
+    public async getDidDoc():Promise<DIDDocument> {
+        if (!this.identifier!.did.startsWith('did:web:')) {
             throw new Error("no DID document for non-webbased did");
         }
-        const allKeys = this.identifier!.keys.map((key) => ({
-            id: this.identifier!.did + '#' + key.kid,
-            type: keyMapping[key.type],
-            controller: this.identifier!.did,
-            publicKeyJwk: toJwk(key.publicKeyHex, key.type, { use: JwkKeyUse.Signature, key: key}) as JsonWebKey,
-        }));
-    
-        const services = this.identifier!.keys.map((key) => ({
-            id: this.identifier!.did + '#' + key.kid,
-            type: "OID4VCP",
-            serviceEndpoint: getBaseUrl() + this.path
-        }));
-    
-        // ed25519 keys can also be converted to x25519 for key agreement
-        const keyAgreementKeyIds = allKeys
-            .filter((key) => ['Ed25519VerificationKey2018', 'X25519KeyAgreementKey2019'].includes(key.type))
-            .map((key) => key.id)
-        const signingKeyIds = allKeys
-            .filter((key) => key.type !== 'X25519KeyAgreementKey2019')
-            .map((key) => key.id)
-    
-        const didDoc:DIDDocument = {
-            '@context': 'https://w3id.org/did/v1',
-            id: this.identifier!.did,
-            verificationMethod: allKeys as VerificationMethod[],
-            authentication: signingKeyIds,
-            assertionMethod: signingKeyIds,
-            keyAgreement: keyAgreementKeyIds,
-            service: [...services, ...(this.identifier?.services || [])],
+        const didDoc = await Factory.toDIDDocument(this.key!, this.identifier!.did, [{
+            "id": this.identifier!.did + '#oid4vp',
+            "type": "OID4VP",
+            "serviceEndpoint": getBaseUrl()
         }
+        ], "JsonWebKey2020");
     
         return didDoc;
     }
 
-    public getPresentation(presentationId:string): PresentationDefinitionV2|null
+    public getPresentation(presentationId:string): PresentationDefinition|null
     {
         if (this.presentations.includes(presentationId)) {
             const store = getPresentationStore();
