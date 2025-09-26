@@ -10,6 +10,7 @@ import { getVerifierStore } from 'verifier/VerifierStore';
 import { bearerAdminForVerifier } from './bearerAdminForVerifier';
 import { dumpExpressRoutes } from '@utils/dumpExpressRoutes';
 import { createRoutesForVerifier } from './createRoutesForVerifier';
+import { createRoutesForAdmin } from './admin/createRoutesForAdmin';
 
 const PORT = process.env.PORT ? Number.parseInt(process.env.PORT) : 5000
 const LISTEN_ADDRESS = process.env.LISTEN_ADDRESS ?? '0.0.0.0'
@@ -26,6 +27,8 @@ export async function initialiseServer() {
     app.get('/', (req, res) => {
         res.send(`<html><body><h1>Restricted Verifier API is running 🎉</h1></body></html>`);
     });
+
+    createRoutesForAdmin(app);
 
     const store = getVerifierStore();
     debug('creating routes for each verifier instance', Object.keys(store));
