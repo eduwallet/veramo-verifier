@@ -16,5 +16,7 @@ export {
   Key,
   Identifier,
   PrivateKey,
+  Presentation,
+  Verifier
 }
 export { migrations } from './migrations/index.js'

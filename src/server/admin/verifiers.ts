@@ -1,7 +1,7 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database/databaseService';
+import { getDbConnection } from '#root/database';
 import { Verifier } from "#root/packages/datastore/index";
 import { Request, Response } from 'express'
 import { DataList, verifierToScheme } from './types.js';
