@@ -1,5 +1,8 @@
+import { getBaseUrl } from "@utils/getBaseUrl";
 import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from "@utils/resolveConfPath";
+import { getDbConnection } from "database";
+import { Presentation } from "packages/datastore/entities/Presentation";
 
 export interface ClaimPresentation {
     id?:string;
@@ -44,8 +47,37 @@ export function getPresentationStore() {
 }
 
 export async function initialisePresentationStore() {
+
+    const dbConnection = await getDbConnection();
+    const repo = dbConnection.getRepository(Presentation);
+    const objs = await repo.createQueryBuilder('presentation').getMany();
+    for (const obj of objs) {
+        const cfg:PresentationDefinition = {
+            id: obj.shortname,
+            name: obj.name,
+            purpose: obj.purpose,
+            input_descriptors: obj.input_descriptors,
+            query: obj.query
+        }
+        _store[obj.shortname] = cfg;
+    } 
+   
     const options = loadJsonFiles<PresentationDefinition>({path: resolveConfPath('presentations')});
     for (const opt of options.asArray) {
-        _store[opt.id] = opt;
+        if (!Object.keys(_store).includes(opt.id)) {
+            _store[opt.id] = opt;
+
+            const obj = new Presentation();
+            obj.shortname = opt.id;
+            obj.name = opt.name;
+            obj.purpose = opt.purpose;
+            if (opt.input_descriptors) {
+                obj.input_descriptors = opt.input_descriptors;
+            }
+            if (opt.query) {
+                obj.query  = opt.query;
+            }
+            await repo.save(obj);
+        }
     }   
 }

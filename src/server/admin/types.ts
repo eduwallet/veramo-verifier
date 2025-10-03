@@ -1,5 +1,5 @@
 import { getDbConnection } from "#root/database";
-import { Identifier, Key } from "#root/packages/datastore/index";
+import { Identifier, Key, Presentation } from "#root/packages/datastore/index";
 import moment from "moment";
 
 export interface DataList {
@@ -49,5 +49,32 @@ export async function identifierToScheme(id:Identifier) {
             isController: key.kid === id.controllerKeyId
         });
     }
+    return retval;
+}
+
+export interface PresentationScheme
+{
+    id:number;
+    shortname:string;
+    name:string;
+    purpose:string;
+    input_descriptors?:string;
+    query?:string;
+    saved: string;
+    updated:string;
+}
+
+export async function presentationToScheme(data:Presentation)
+{
+    const retval:PresentationScheme = {
+        id: data.id,
+        shortname: data.shortname,
+        name: data.name,
+        purpose: data.path,
+        input_descriptors: data.input_descriptors,
+        query: data.query,
+        saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),
+        updated: moment(data.updateDate).format('YYYY-MM-DD HH:mm:ss')
+    };
     return retval;
 }
