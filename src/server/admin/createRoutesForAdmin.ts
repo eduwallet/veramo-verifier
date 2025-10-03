@@ -3,6 +3,7 @@ import { Strategy } from 'passport-http-bearer';
 import express, { Express } from 'express'
 import { createIdentifier, deleteIdentifier, listIdentifiers, storeIdentifier } from './identifiers';
 import { createPresentation, deletePresentation, listPresentations, storePresentation } from './presentations';
+import { createVerifier, deleteVerifier, listVerifiers, storeVerifier } from './verifiers';
 
 function bearerAdminForAPI() {
     passport.use('admin-api', new Strategy(
@@ -60,6 +61,23 @@ export async function createRoutesForAdmin(app:Express) {
     router.put('/presentations', 
         passport.authenticate('admin-api', { session: false }),
         createPresentation
+    );
+
+    router.get('/verifiers', 
+        passport.authenticate('admin-api', { session: false }),
+        listVerifiers
+    );
+    router.post('/verifiers', 
+        passport.authenticate('admin-api', { session: false }),
+        storeVerifier
+    );
+    router.delete('/verifiers', 
+        passport.authenticate('admin-api', { session: false }),
+        deleteVerifier
+    );
+    router.put('/verifiers', 
+        passport.authenticate('admin-api', { session: false }),
+        createVerifier
     );
 }
 

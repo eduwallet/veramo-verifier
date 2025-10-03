@@ -1,6 +1,7 @@
 import { getDbConnection } from "#root/database";
 import { Identifier, Key, Presentation } from "#root/packages/datastore/index";
 import moment from "moment";
+import { Verifier } from "packages/datastore/entities/Verifier";
 
 export interface DataList {
     offset: number;
@@ -73,6 +74,34 @@ export async function presentationToScheme(data:Presentation)
         purpose: data.path,
         input_descriptors: data.input_descriptors,
         query: data.query,
+        saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),
+        updated: moment(data.updateDate).format('YYYY-MM-DD HH:mm:ss')
+    };
+    return retval;
+}
+
+
+export interface VerifierScheme
+{
+    id:number;
+    name:string;
+    path:string;
+    did:string;
+    admin_token:string;
+    presentations:string;
+    saved: string;
+    updated:string;
+}
+
+export async function verifierToScheme(data:Verifier)
+{
+    const retval:VerifierScheme = {
+        id: data.id,
+        path: data.path,
+        name: data.name,
+        did: data.did,
+        presentations: JSON.parse(data.presentations ?? '[]'),
+        admin_token: data.admin_token,
         saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),
         updated: moment(data.updateDate).format('YYYY-MM-DD HH:mm:ss')
     };
