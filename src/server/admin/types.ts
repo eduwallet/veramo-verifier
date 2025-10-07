@@ -100,7 +100,7 @@ export async function verifierToScheme(data:Verifier)
         path: data.path,
         name: data.name,
         did: data.did,
-        presentations: JSON.parse(data.presentations ?? '[]'),
+        presentations: data.presentations ?? '[]',
         admin_token: data.admin_token,
         saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),
         updated: moment(data.updateDate).format('YYYY-MM-DD HH:mm:ss')

@@ -15,8 +15,8 @@ export class Presentations1758721139150 implements MigrationInterface {
             { name: 'shortname', type: 'varchar', isNullable: false},
             { name: 'name', type: 'varchar', isNullable: false},
             { name: 'purpose', type: 'varchar', length: '1024', isNullable: false},
-            { name: 'input_descriptors', type: 'text', isNullable: false},
-            { name: 'query', type: 'text', isNullable: false},
+            { name: 'input_descriptors', type: 'text', isNullable: true},
+            { name: 'query', type: 'text', isNullable: true},
             { name: 'saveDate', type: dateTimeType },
             { name: 'updateDate', type: dateTimeType }
           ],

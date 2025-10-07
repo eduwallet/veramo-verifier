@@ -72,10 +72,10 @@ export async function initialisePresentationStore() {
             obj.name = opt.name;
             obj.purpose = opt.purpose;
             if (opt.input_descriptors) {
-                obj.input_descriptors = opt.input_descriptors;
+                obj.input_descriptors = JSON.stringify(opt.input_descriptors);
             }
             if (opt.query) {
-                obj.query  = opt.query;
+                obj.query  = JSON.stringify(opt.query);
             }
             await repo.save(obj);
         }
