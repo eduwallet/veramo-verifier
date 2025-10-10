@@ -47,7 +47,7 @@ class DIDConfigurationStore {
             }
         }
         catch (e) {
-            console.error(e);
+            debug("Missing path for DIDs");
         }
     }
 
