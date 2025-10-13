@@ -62,7 +62,25 @@ export async function initialisePresentationStore() {
                 input_descriptors: obj.input_descriptors,
                 query: obj.query
             }
-            _store[obj.shortname] = cfg;
+            try {
+                if (cfg.input_descriptors) {
+                    cfg.input_descriptors = JSON.parse(cfg.input_descriptors);
+                }
+            }
+            catch (e) {
+                cfg.input_descriptors = null;
+            }
+            try {
+                if (cfg.query) {
+                    cfg.query = JSON.parse(cfg.query);
+                }
+            }
+            catch (e) {
+                cfg.query = null;
+            }
+            if (cfg.input_descriptors || cfg.query) {
+                _store[obj.shortname] = cfg;
+            }
         } 
     
         try {
