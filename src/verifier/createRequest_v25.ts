@@ -1,3 +1,6 @@
+import Debug from 'debug';
+const debug = Debug('verifier:protocol');
+
 import { replaceParamsInUrl } from "@utils/replaceParamsInUrl";
 import { RP } from "./RP";
 import { get_presentation_path, response_path } from "server/createRoutesForVerifier";
@@ -6,6 +9,7 @@ import { getBaseUrl } from "@utils/getBaseUrl";
 // This creates a request following the version 25 spec which still supports presentations
 export function createRequest_v25(rp:RP)
 {
+    debug('Creating v25 authorization request using input descriptor/PEX')   ;
     const presentation_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(get_presentation_path, {presentationid: rp.presentation.id});
     const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.state});
     return {

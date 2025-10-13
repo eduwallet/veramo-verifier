@@ -12,7 +12,17 @@ export function getPresentationDef(verifier:Verifier, path:string) {
         if (!presentation) {
             return sendErrorResponse(response, 404, 'No such presentation for ' + req.params.presentationid);
         }
-        debug("returning", presentation);
-        return response.json(presentation);
+        debug("returning", {
+            id: presentation.id,
+            name: presentation.name,
+            purpose: presentation.purpose,
+            input_descriptors: presentation.input_descriptors
+        });
+        return response.json({
+            id: presentation.id,
+            name: presentation.name,
+            purpose: presentation.purpose,
+            input_descriptors: presentation.input_descriptors
+        });
     });
 }
