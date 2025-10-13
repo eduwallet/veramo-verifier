@@ -28,11 +28,11 @@ export class Presentation extends BaseEntity {
 
     @Column('text')
     // @ts-ignore
-    input_descriptors: string
+    input_descriptors?: string
 
     @Column('text')
     // @ts-ignore
-    query: string
+    query?: string
 
     @BeforeInsert()
     setSaveDate() {
