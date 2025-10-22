@@ -1,5 +1,8 @@
+import { Factory } from '@muisit/cryptokey';
 import Debug from 'debug';
-import { Request } from 'express'
+import { DIDStoreValue } from 'dids/Store';
+import { Request, Router } from 'express'
+import { sendErrorResponse } from 'server/sendErrorResponse';
 import { Verifier } from 'verifier/Verifier';
 
 const debug = Debug('server:didspec');
@@ -17,7 +20,25 @@ export function getDidSpec(verifier:Verifier) {
     }
     verifier.router!.get(path, async (req: Request, res) => {
         debug("getting did.json for", verifier.name);
-        const didDoc = verifier.getDidDoc();
-        return res.json(didDoc);
+        try {
+            const didDoc = await verifier.getDidDoc();
+            return res.json(didDoc);
+        }
+        catch (e) {
+            return sendErrorResponse(res, 500, 'Invalid DID', e);
+        }
+    });
+}
+
+export function getDidWebSpec(router:Router, value:DIDStoreValue) {
+    router!.get(value.identifier.path!, async (req: Request, res) => {
+         // Sphereon requires the deprecated JsonWebKey2020 verification-method instead of the default JsonWebKey
+         try {
+            const didDoc = await Factory.toDIDDocument(value.key, value.identifier.did, value.identifier.services ? JSON.parse(value.identifier.services) : null, 'JsonWebKey2020');
+            return res.json(didDoc);
+         }
+         catch (e) {
+            return sendErrorResponse(res, 500, 'Invalid DID', e);
+         }
     });
 }

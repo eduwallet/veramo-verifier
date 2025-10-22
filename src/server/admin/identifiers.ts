@@ -47,17 +47,22 @@ function is_valid_key(k:string)
     }
 }
 
+
 interface StoreIdentifierRequest {
     did:string;
     original:string;
     alias:string;
     provider:string;
+    path?:string;
+    services?:string;
 }
 
-async function setIdentifierData(identifier:Identifier, did:string, alias:string, provider:string, ckey:CryptoKey)
+async function setIdentifierData(identifier:Identifier, did:string, alias:string, provider:string, path?:string, services?:string, ckey:CryptoKey)
 {
     identifier.alias = alias;
     identifier.provider = provider;
+    identifier.path = path && path.length ? path : undefined;
+    identifier.services = services && services.length ? services : undefined;
 
     switch (identifier.provider) {
         case 'did:web':
@@ -97,7 +102,7 @@ export async function storeIdentifier(request: Request<StoreIdentifierRequest>, 
         const pkey = await pkeys.findOneBy({alias:dbKey.kid});
         const ckey = await Factory.createFromType(dbKey.type, pkey?.privateKeyHex);
 
-        await setIdentifierData(identifier, request.body.did, request.body.alias, request.body.provider, ckey);
+        await setIdentifierData(identifier, request.body.did, request.body.alias, request.body.provider, request.body.path, request.body.services, ckey);
 
         debug("saving identifier", identifier);
         await ids.save(identifier);
@@ -120,6 +125,8 @@ interface CreateIdentifierRequest {
     did:string;
     alias:string;
     provider:string;
+    path?:string;
+    services?:string;
     keytype:string;
 }
 export async function createIdentifier(request: Request<CreateIdentifierRequest>, response: Response) {
@@ -140,7 +147,7 @@ export async function createIdentifier(request: Request<CreateIdentifierRequest>
 
         const identifier = new Identifier();
         const ckey = await createNewKey(request.body.keytype ?? '');
-        await setIdentifierData(identifier, request.body.did, request.body.alias, request.body.provider, ckey);
+        await setIdentifierData(identifier, request.body.did, request.body.alias, request.body.provider, request.body.path, request.body.services, ckey);
         await ids.save(identifier);
 
         debug("saving new key");

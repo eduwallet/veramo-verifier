@@ -25,6 +25,14 @@ export class Identifier extends BaseEntity {
   // @ts-ignore
   alias?: string
 
+  @Column({ type: 'varchar', nullable: true })
+  // @ts-ignore
+  path?: string
+
+  @Column({ type: 'text', nullable: true })
+  // @ts-ignore
+  services?: string
+
   @BeforeInsert()
   setSaveDate() {
     this.saveDate = new Date()

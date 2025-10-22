@@ -11,6 +11,8 @@ import { bearerAdminForVerifier } from './bearerAdminForVerifier';
 import { dumpExpressRoutes } from '@utils/dumpExpressRoutes';
 import { createRoutesForVerifier } from './createRoutesForVerifier';
 import { createRoutesForAdmin } from './admin/createRoutesForAdmin';
+import { getDIDConfigurationStore } from 'dids/Store';
+import { getDidWebSpec } from './endpoints/getDidSpec';
 
 const PORT = process.env.PORT ? Number.parseInt(process.env.PORT) : 5000
 const LISTEN_ADDRESS = process.env.LISTEN_ADDRESS ?? '0.0.0.0'
@@ -35,6 +37,17 @@ export async function initialiseServer() {
     for (const verifier of Object.values(store)) {
         bearerAdminForVerifier(verifier);
         await createRoutesForVerifier(verifier, app);
+    }
+
+    const rootRouter = express.Router();
+    app.use('/', rootRouter);
+    const didStore = getDIDConfigurationStore();
+    const dids = await didStore.keysWithPath();
+    for (const did of dids) {
+      const didValue = await didStore.get(did);
+      if (didValue?.identifier.path && didValue?.identifier.path.length) {
+        getDidWebSpec(rootRouter, didValue);
+      }
     }
 
     debug("starting express server");
