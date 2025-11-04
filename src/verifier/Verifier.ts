@@ -63,6 +63,9 @@ export class Verifier {
         if (!this.did) {
             throw new Error('Missing issuer did configuration');
         }
+        if (!this.identifier?.keys) {
+            throw new Error("Missing keys of identifier");
+        }
         const dbKey = this.identifier!.keys[0];
         const pkeys = dbConnection.getRepository(PrivateKey);
         const pkey = await pkeys.findOneBy({alias:dbKey.kid});
