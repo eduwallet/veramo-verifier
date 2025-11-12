@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@digitalcredentials/bitstring": "^3.1.2",
+    "@futuretense/secret-box": "^1.0.0",
     "@muisit/cryptokey": "^1.2.2",
     "@muisit/simplejwt": "1.0.2",
     "@types/node": "^24.0.14",

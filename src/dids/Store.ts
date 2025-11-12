@@ -78,7 +78,8 @@ class DIDConfigurationStore {
         const dbKey = result.keys[0];
         const pkeys = dbConnection.getRepository(PrivateKey);
         const pkey = await pkeys.findOneBy({alias:dbKey.kid});
-        const ckey = await Factory.createFromType(dbKey.type, pkey?.privateKeyHex);
+        const decodedPkey = await pkey!.decodeKey();
+        const ckey = await Factory.createFromType(dbKey.type, decodedPkey);
         return {
             identifier: result,
             key: ckey
@@ -127,7 +128,8 @@ class DIDConfigurationStore {
         const pKey = new PrivateKey();
         pKey.alias = dbKey.kid;
         pKey.type = dbKey.type;
-        pKey.privateKeyHex = ckey.exportPrivateKey();
+        pKey.setSeed();
+        pKey.encodeKey(ckey.exportPrivateKey());
         const prepo = dbConnection.getRepository(PrivateKey);
         await prepo.save(pKey);
 

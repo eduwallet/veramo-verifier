@@ -9,6 +9,7 @@ import { SessionStateManager } from '@utils/SessionStateManager';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
 import { getDbConnection } from 'database';
 import { Identifier, PrivateKey } from 'packages/datastore';
+import { getDIDConfigurationStore } from 'dids/Store';
 
 export interface VerifierOptions {
     name:string;
@@ -52,26 +53,18 @@ export class Verifier {
     }
 
     public async initialise() {
-        const dbConnection = await getDbConnection();
-        const ids = dbConnection.getRepository(Identifier);
-        this.identifier = await ids.createQueryBuilder('identifier')
-            .innerJoinAndSelect("identifier.keys", "key")
-            .where('did=:did', {did: this.did})
-            .orWhere('alias=:alias', {alias: this.did})
-            .getOne();
-        
+        const store = getDIDConfigurationStore();
         if (!this.did) {
             throw new Error('Missing issuer did configuration');
         }
-        if (!this.identifier?.keys) {
-            throw new Error("Missing keys of identifier");
+
+        const keymaterial = await store.get(this.did);
+        
+        if (!keymaterial?.identifier || !keymaterial.identifier.keys || !keymaterial.key) {
+            throw new Error("Missing keys or identifier");
         }
-        const dbKey = this.identifier!.keys[0];
-        const pkeys = dbConnection.getRepository(PrivateKey);
-        const pkey = await pkeys.findOneBy({alias:dbKey.kid});
-
-        this.key = await Factory.createFromType(dbKey.type, pkey?.privateKeyHex);
-
+        this.identifier = keymaterial.identifier;
+        this.key = keymaterial.key;
     }
     
     public clientId()

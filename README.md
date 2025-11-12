@@ -17,6 +17,8 @@ DB_PORT=<postgres database port, default 5432>
 PORT=<port number for the verifier agent to listen to, default 5000>
 LISTEN_ADDRESS=<network interface address to bind to, default 0.0.0.0>
 BASEURL=<base Url for the verifier agent, default https://verifier.dev.eduwallet.nl>
+BEARER_TOKEN=<token used for the generic administrative interface>
+PASSPHRASE=<token used for encryption of private keys in the database>
 ```
 
 ## Installation
@@ -361,4 +363,10 @@ vp_token: <JWT>
 The `presentation_submission` indicates where to find the requested fields in the set of Verifiable Credentials transmitted. It is a response to the `constraints` field in the presentation definition above.
 
 The actual Verifiable Credentials are stored in the `vp_token` attribute. The Veramo-Verifier decodes and verifies the JWT and collects all the claims for the front-end-verifier.
+
+# Changelog / Release Notes
+
+| Version | Commit  | Date       | Comment             |
+| ------- | ------- | ---------- | ------------------- |
+|         |         | 2025-11-12 | Implementation of encoded private keys. When running this version, make sure the PASSPHRASE environment variable is set. If it is not set, the keys are not encoded with the migration (so remain unchanged). This will work, but encoding manually afterwards is a pain. The easiest way to fix this is to remove the EncKey migration from the `migrations` table, which will retry to encode all private keys. |
 
