@@ -129,7 +129,7 @@ class DIDConfigurationStore {
         pKey.alias = dbKey.kid;
         pKey.type = dbKey.type;
         pKey.setSeed();
-        pKey.encodeKey(ckey.exportPrivateKey());
+        await pKey.encodeKey(ckey.exportPrivateKey());
         const prepo = dbConnection.getRepository(PrivateKey);
         await prepo.save(pKey);
 
