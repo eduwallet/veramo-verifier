@@ -6,6 +6,7 @@ import { resolveConfPath } from '@utils/resolveConfPath';
 import { VerifierOptions, Verifier } from './Verifier';
 import { getDbConnection } from "database";
 import { Verifier as VerifierEntity } from "packages/datastore/entities/Verifier";
+import { hasAdminBearerToken } from '@utils/adminBearerToken';
 
 interface VerifierStoreType {
     [x:string]: Verifier;
@@ -16,7 +17,8 @@ export function getVerifierStore() {
     return VerifierStore;
 }
 
-export async function createVerifiers() {
+async function readFromDB()
+{
     try {
         const dbConnection = await getDbConnection();
         const repo = dbConnection.getRepository(VerifierEntity);
@@ -33,6 +35,27 @@ export async function createVerifiers() {
             await verifier.initialise();
             VerifierStore[verifier.name] = verifier;
         } 
+    } catch (e) {
+        console.error("Caught exception on verifier initialisation", e);
+    }
+}
+
+async function clearDB()
+{
+    try {
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(VerifierEntity);
+        await repo.clear();
+    } catch (e) {
+        console.error("Caught exception on verifier initialisation", e);
+    }
+}
+
+async function readFromFile()
+{
+    try {
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(VerifierEntity);
 
         try {
             const options = loadJsonFiles<VerifierOptions>({path: resolveConfPath('verifiers')});
@@ -58,4 +81,14 @@ export async function createVerifiers() {
     } catch (e) {
         console.error("Caught exception on verifier initialisation", e);
     }
+}
+
+export async function createVerifiers() {
+    if (hasAdminBearerToken()) {
+        await readFromDB();
+    }
+    else {
+        await clearDB();
+    }
+    await readFromFile();
 }
