@@ -4,11 +4,13 @@ import express, { Express } from 'express'
 import { createIdentifier, deleteIdentifier, listIdentifiers, storeIdentifier } from './identifiers';
 import { createPresentation, deletePresentation, listPresentations, storePresentation } from './presentations';
 import { createVerifier, deleteVerifier, listVerifiers, storeVerifier } from './verifiers';
+import { adminBearerToken, hasAdminBearerToken } from '@utils/adminBearerToken';
+import { getVersion } from './getVersion';
 
 function bearerAdminForAPI() {
     passport.use('admin-api', new Strategy(
         function (token:string, done:Function) {
-            if (token == process.env.BEARER_TOKEN) {
+            if (token == adminBearerToken()) {
                 return done(null, true);
             }
             return done(null, false);
@@ -19,6 +21,13 @@ function bearerAdminForAPI() {
 export async function createRoutesForAdmin(app:Express) {
     const router = express.Router();
     app.use('/api', router);
+    router.get('/version', getVersion);
+    
+    // no BEARER_TOKEN means no administration api
+    if (!hasAdminBearerToken()) {
+        return;
+    }
+    
     bearerAdminForAPI();
 
     router.get('/exit',
