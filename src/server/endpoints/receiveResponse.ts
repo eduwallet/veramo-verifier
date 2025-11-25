@@ -15,8 +15,7 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 debug("receiving auth response", verifier.name, request.params);
                 const state = request.params.state;
                 const session = await verifier.sessionManager.get(state!);
-                const rp = session.data.rp;
-                if (!rp || rp.status != RPStatus.RETRIEVED) {
+                if (session.data.status != RPStatus.RETRIEVED) {
                     debug.log('no state for this response');
                     return sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
@@ -24,9 +23,9 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 try {
                     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.6
                     // "When supplied as the response_type parameter in an Authorization Request, a successful response MUST include the vp_token parameter."
+                    const rp = await verifier.getRPForPresentation(session);
                     await rp.processResponse(request.body.state, request.body as AuthorizationResponse, JSON.parse(request.body.presentation_submission));
-                    session.data.result = rp.result;
-                    debug("parsing results in ", rp.result);
+                    debug("parsing results in ", session.data.result);
                 }
                 catch (e) {
                     console.log(e);

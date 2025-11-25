@@ -14,23 +14,23 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                 debug("receiving request for offer");
                 const state = request.params.state;
                 const session = await verifier.sessionManager.get(state);
-                const rp = session.data.rp;
-                if (!rp) {
-                    console.log('no state for this request');
-                    return sendErrorResponse(response, 404, 'No authorization request could be found');
+
+                if (!session.data.authorizationRequest) {
+                    throw new Error("No authorization request for session");
                 }
 
                 // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10
                 // optional wallet_nonce in the request_uri call must be reflected in the authorization request
                 if (request.params.wallet_nonce) {
-                    rp.authorizationRequest.wallet_nonce = request.params.wallet_nonce;
+                    session.data.authorizationRequest.wallet_nonce = request.params.wallet_nonce;
                 }
 
-                debug("sending", rp.authorizationRequest);
+                debug("sending", session.data.authorizationRequest);
                 // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10.1
                 // "The Request URI response MUST be an HTTP response with the content type application/oauth-authz-req+jwt"
-                const token = await rp.toJWT(rp.authorizationRequest, 'oauth-authz-req+jwt');
-                rp.status = RPStatus.RETRIEVED;
+                const rp = await verifier.getRPForPresentation(session);
+                const token = await rp.toJWT(session.data.authorizationRequest, 'oauth-authz-req+jwt');
+                session.data.status = RPStatus.RETRIEVED;
                 await verifier.sessionManager.set(session);
                 response.statusCode = 200
                 return response.end(token);

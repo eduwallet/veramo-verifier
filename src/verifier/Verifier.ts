@@ -7,9 +7,9 @@ import { getPresentationStore, PresentationDefinition } from "presentations/Pres
 import { StatusList } from "statuslist/StatusList";
 import { SessionStateManager } from '@utils/SessionStateManager';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from 'database';
-import { Identifier, PrivateKey } from 'packages/datastore';
+import { Identifier } from 'packages/datastore';
 import { getDIDConfigurationStore } from 'dids/Store';
+import { Session } from 'packages/datastore/entities/Session';
 
 export interface VerifierOptions {
     name:string;
@@ -18,10 +18,6 @@ export interface VerifierOptions {
     path:string;
     presentations:string[];
     metadata?: any;
-}
-
-interface RPSessions {
-    [x:string]: RP;
 }
 
 export class Verifier {
@@ -35,7 +31,7 @@ export class Verifier {
     public eventEmitter:EventEmitter;
     public sessionManager:SessionStateManager;
     public presentations:string[];
-    public sessions:RPSessions = {};
+    public sessions:Map<string,RP>;
     public statusList:StatusList;
     public metadata?:any;
 
@@ -46,7 +42,8 @@ export class Verifier {
         this.adminToken = opts.adminToken;
         this.path = opts.path;
         this.eventEmitter = new EventEmitter();
-        this.sessionManager = new SessionStateManager();
+        this.sessionManager = new SessionStateManager(this.name);
+        this.sessions = new Map();
         this.presentations = opts.presentations;
         this.statusList = new StatusList();
         this.metadata = opts.metadata;
@@ -78,8 +75,9 @@ export class Verifier {
         return getBaseUrl() + '/' + this.name;
     }
 
-    public async getRPForPresentation(presentationId:string): Promise<RP> {
-        return new RP(this, this.getPresentation(presentationId)!);
+    public async getRPForPresentation(session:Session): Promise<RP> {
+        const rp = new RP(this, this.getPresentation(session.data.presentation)!, session);
+        return rp;
     }
 
     public signingAlgorithm():string

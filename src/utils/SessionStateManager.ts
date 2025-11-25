@@ -1,20 +1,15 @@
 import moment from 'moment';
 import { createUniqueId } from '#root/utils/createUniqueId';
-//import { getDbConnection } from '#root/database/databaseService';
-//import { LessThan } from 'typeorm';
-
-export interface Session {
-    id: string;
-    expirationDate: Date;
-    data: any;
-}
+import { getDbConnection } from '#root/database';
+import { Session } from '#root/packages/datastore/entities/Session';
+import { LessThan } from 'typeorm';
 
 export class SessionStateManager {
-    private _sessions:Map<string,Session>;
+    private verifier:string = '';
 
-    public constructor()
+    public constructor(verifier:string)
     {
-        this._sessions = new Map<string, Session>();
+        this.verifier = verifier;
     }
 
     public async clear(id: string) {
@@ -22,23 +17,17 @@ export class SessionStateManager {
             throw Error('No state id supplied');
         }
         
-        //const dbConnection = await getDbConnection();
-        //const repo = dbConnection.getRepository(Session);
-        //await repo.delete({uuid: id, issuer: this.issuer});
-        if (this._sessions.has(id)) {
-            this._sessions.delete(id);
-        }
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Session);
+        await repo.delete({uuid: id, verifier: this.verifier});
     }
 
     public async get(id:string, callbackIfNotFound?:Function):Promise<Session> {
-        //const dbConnection = await getDbConnection();
-        //const repo = dbConnection.getRepository(Session);
-        //let session = await repo.findOneBy({uuid: id, issuer: this.issuer});
-        let session;
-        if (this._sessions.has(id)) {
-            session = this._sessions.get(id)!;
-        }
-        else {
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Session);
+        let session = await repo.findOneBy({uuid: id, verifier: this.verifier});
+
+        if (!session) {
             session = this.newState();
             session.data = {};
             if (callbackIfNotFound) {
@@ -48,48 +37,31 @@ export class SessionStateManager {
         return session;
     }
 
-    public async getByState(id:string):Promise<Session|null>
-    {
-        //const dbConnection = await getDbConnection();
-        //const repo = dbConnection.getRepository(Session);
-        //return await repo.findOneBy({state: id, issuer: this.issuer});
-        if (this._sessions.has(id)) {
-            return this._sessions.get(id)!;
-        }
-        return null;
-    }
-
     public async set(state:Session)
     {
-        //const dbConnection = await getDbConnection();
-        //const repo = dbConnection.getRepository(Session);
-        //await repo.save(state);
-        this._sessions.set(state.id, state);
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Session);
+        state.verifier = this.verifier;
+        await repo.save(state);
     }
 
     public newState():Session {
-        const session:Session = {
-            id: createUniqueId(),
-            expirationDate: moment().add(4, 'hours').toDate(),
-            data: {}
-        };
+        // create a Session entity object to ensure the decorators and callbacks of TypeORM are called
+        const session:Session = new Session();
+        session.uuid = createUniqueId();
+        session.verifier = this.verifier;
+        session.expirationDate = moment().add(4, 'hours').toDate();
+        session.data = {};
         return session;
     }
 
     public async clearAll()
     {
-        //const dbConnection = await getDbConnection();
-        //const repo = dbConnection.getRepository(Session);
-        //await repo.delete({
-        //    expirationDate: LessThan(new Date()),
-        //    issuer: this.issuer
-        //});
-        const now = new Date();
-        for(const key of this._sessions.keys()) {
-            const session = this._sessions.get(key)!;
-            if (now > session.expirationDate) {
-                this._sessions.delete(key);
-            }
-        }
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Session);
+        await repo.delete({
+            expirationDate: LessThan(new Date()),
+            verifier: this.verifier
+        });
     }
 }
