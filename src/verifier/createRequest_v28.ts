@@ -5,12 +5,12 @@ import { response_path } from "server/createRoutesForVerifier";
 
 export function createRequest_v28(rp:RP)
 {
-    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.state});
+    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.session.uuid});
     return {
         // basic RequestObject attributes
         "response_type": 'vp_token', // instructs the wallet to return a vp_token
         "response_mode": "direct_post", // default is using query or fragment elements in the callback
-        "state": rp.state,
+        "state": rp.session.uuid,
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.9.3
         // use the decentralized_identifier prefix to pass on our did key
         "client_id": 'decentralized_identifier:' + rp.verifier.clientId(),
@@ -24,7 +24,7 @@ export function createRequest_v28(rp:RP)
         "client_id_scheme": "did", // UniMe workaround
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         // "The RP MUST send a nonce"
-        "nonce": rp.nonce,
+        "nonce": rp.session.data.nonce,
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9.1
         // "The aud Claim MUST equal to the issuer Claim value, when Dynamic Self-Issued OP Discovery is performed."
         "aud": rp.verifier.clientId(),
@@ -33,7 +33,7 @@ export function createRequest_v28(rp:RP)
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         "client_metadata": rp.clientMetadata(),
         "id_token_type": "attester_signed_id_token subject_signed_id_token",
-        "dcl_query": rp.presentation.query,
+        "dcql_query": rp.presentation.query,
 
     }
 }

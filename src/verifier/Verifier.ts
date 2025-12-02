@@ -90,12 +90,12 @@ export class Verifier {
             "jwt_vc_json": {
                 "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
-            "vc+sd-jwt": {
-                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-            },
-            "dc+sd-jwt": {
-                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-            }
+//            "vc+sd-jwt": {
+//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+//            },
+//            "dc+sd-jwt": {
+//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+//            }
         };
     }
 
