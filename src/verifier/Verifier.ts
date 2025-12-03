@@ -75,9 +75,14 @@ export class Verifier {
         return getBaseUrl() + '/' + this.name;
     }
 
-    public async getRPForPresentation(session:Session): Promise<RP> {
-        const rp = new RP(this, this.getPresentation(session.data.presentation)!, session);
-        return rp;
+    public async getRPForSession(session:Session): Promise<RP> {
+        if (session.data.presentationId) {
+            return new RP(this, this.getPresentation(session.data.presentation)!, session);
+        }
+        else if(session.data.dcql) {
+            return new RP(this, session.data.dcql, session);
+        }
+        throw new Error("No relying party could be created");
     }
 
     public signingAlgorithm():string

@@ -3,9 +3,9 @@ import { RP } from "./RP";
 import { replaceParamsInUrl } from "@utils/replaceParamsInUrl";
 import { response_path } from "server/createRoutesForVerifier";
 
-export function createRequest_v28(rp:RP)
+export function createRequest_v28(rp:RP, dcql:any)
 {
-    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.session.uuid});
+    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {state:rp.session.uuid});
     return {
         // basic RequestObject attributes
         "response_type": 'vp_token', // instructs the wallet to return a vp_token
@@ -33,7 +33,6 @@ export function createRequest_v28(rp:RP)
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         "client_metadata": rp.clientMetadata(),
         "id_token_type": "attester_signed_id_token subject_signed_id_token",
-        "dcql_query": rp.presentation.query,
-
+        "dcql_query": dcql
     }
 }

@@ -26,10 +26,10 @@ export class DCQLSubmission
     public credentials:ExtractedCredential[];
     public messages:Message[];
 
-    public constructor(rp:RP, credential:string, definition:CredentialPresentation, presentation:Presentation)
+    public constructor(rp:RP, definition:CredentialPresentation, presentation:Presentation)
     {
         this.rp = rp;
-        this.credentialId = credential;
+        this.credentialId = definition.id;
         this.presentation = presentation;
         this.credentials = [];
         this.definition = definition;
@@ -72,7 +72,7 @@ export class DCQLSubmission
                 if (!jwt.payload?.aud || jwt.payload.aud != this.rp.verifier.clientId()) {
                     this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': aud claim does not match client id of verifier'});
                 }
-                if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.nonce) {
+                if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.session.data.nonce) {
                     this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': nonce claim does not match session nonce'});
                 }
 
@@ -103,6 +103,7 @@ export class DCQLSubmission
 
     private async extractVCDMCredentials(jwt:JWT)
     {
+        // TODO: make a difference between VCDM 1.1 and VCDM 2 presentations
         const vp = jwt.payload!.vp!;
         if (!vp.type || !Array.isArray(vp.type) || !vp.type.includes('VerifiablePresentation')) {
             this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: presentation has incorrect type`});

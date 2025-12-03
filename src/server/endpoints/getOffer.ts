@@ -28,7 +28,7 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                 debug("sending", session.data.authorizationRequest);
                 // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10.1
                 // "The Request URI response MUST be an HTTP response with the content type application/oauth-authz-req+jwt"
-                const rp = await verifier.getRPForPresentation(session);
+                const rp = await verifier.getRPForSession(session);
                 const token = await rp.toJWT(session.data.authorizationRequest, 'oauth-authz-req+jwt');
                 session.data.status = RPStatus.RETRIEVED;
                 await verifier.sessionManager.set(session);

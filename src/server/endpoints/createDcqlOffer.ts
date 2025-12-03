@@ -8,7 +8,7 @@ import { getBaseUrl } from '@utils/getBaseUrl';
 
 const debug = Debug("verifier:createOffer");
 interface CreateOfferRequest {
-    [x:string]: any;
+    dcql:string;
 }
 
 interface CreateOfferResponse {
@@ -17,22 +17,23 @@ interface CreateOfferResponse {
     requestUri: string;
 }
 
-export function createOffer(verifier: Verifier, createOfferPath: string, offerPath: string, responsePath:string, presentationPath:string, checkPath:string) {
-    debug("creating route for createOffer at ", createOfferPath);
+export function createDcqlOffer(verifier: Verifier, createOfferPath: string, offerPath: string, responsePath:string, checkPath:string) {
+    debug("creating route for createDcqlOffer at ", createOfferPath);
     verifier.router!.post(createOfferPath,
         passport.authenticate(verifier.name + '-admin', { session: false }),
         async (request: Request<CreateOfferRequest>, response: Response<CreateOfferResponse>) => {
         try {
             debug("received request to create a Verification Offer from ", verifier.name, request.body);
             const session = await verifier.sessionManager.get('');
-            const presentationId = request.params.presentationid;
             const requestByReferenceURI = getBaseUrl() + replaceParamsInUrl(offerPath, {state:session.uuid});
             const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, {state:session.uuid });
             // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
             // "when using request_uri, the only other required parameter ... is client_id"
             const requestUri = 'openid4vp://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
 
-            session.data.presentation = presentationId;
+            // convert the query to proper JSON, throws an error if it fails
+            session.data.dcql = JSON.parse(request.body.dcql);
+
             const rp = await verifier.getRPForSession(session);
             if (!rp) {
                 throw new Error("RP instance not configured");

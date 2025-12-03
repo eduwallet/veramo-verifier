@@ -23,8 +23,8 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 try {
                     // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.6
                     // "When supplied as the response_type parameter in an Authorization Request, a successful response MUST include the vp_token parameter."
-                    const rp = await verifier.getRPForPresentation(session);
-                    await rp.processResponse(request.body.state, request.body as AuthorizationResponse, JSON.parse(request.body.presentation_submission));
+                    const rp = await verifier.getRPForSession(session);
+                    await rp.processResponse(request.body.state, request.body as AuthorizationResponse);
                     debug("parsing results in ", session.data.result);
                 }
                 catch (e) {

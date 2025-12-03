@@ -1,7 +1,7 @@
 import { Verifier } from "./Verifier";
 import { v4 } from 'uuid';
 import { DCQLSubmission, ExtractedCredential } from "./DCQLSubmission";
-import { Message } from "types";
+import { DCQL, Message } from "types";
 import { PresentationDefinition } from "presentations/PresentationStore";
 import { Factory } from "@muisit/cryptokey";
 import { JWT } from "@muisit/simplejwt";
@@ -34,12 +34,18 @@ export interface VPResult {
 
 export class RP {
     public verifier:Verifier;
-    public presentation:PresentationDefinition;
+    public presentation?:PresentationDefinition;
+    public dcql?:DCQL;
     public session:Session;
 
-    public constructor(v:Verifier, p:PresentationDefinition, s:Session) {
+    public constructor(v:Verifier, p:PresentationDefinition|any, s:Session) {
         this.verifier = v;
-        this.presentation = p;
+        if (p && (p as PresentationDefinition).id && typeof(p) == 'object') {
+            this.presentation = p as PresentationDefinition;
+        }
+        else if (p && (p as any).credentials) {
+            this.dcql = p;
+        }
         this.session = s;
         if (!s.data.created) {
             s.data.created = new Date();
@@ -69,10 +75,13 @@ export class RP {
     public createAuthorizationRequest(): AuthorizationRequest {
         this.session.data.status = RPStatus.CREATED;
         this.session.data.nonce = v4();
-        if (this.presentation.query) {
-            this.session.data.authorizationRequest = createRequest_v28(this);
+        if (this.dcql) {
+            this.session.data.authorizationRequest = createRequest_v28(this, this.dcql);
         }
-        else if (this.presentation.input_descriptors) {
+        else if (this.presentation?.query) {
+            this.session.data.authorizationRequest = createRequest_v28(this, this.presentation.query);
+        }
+        else if (this.presentation?.input_descriptors) {
             this.session.data.authorizationRequest = createRequest_v25(this);
         }
         else {
@@ -151,7 +160,7 @@ export class RP {
         return true;
     }
 
-    public async processResponse(state:string, response:AuthorizationResponse, submission: any) {
+    public async processResponse(state:string, response:AuthorizationResponse) {
         // whatever happens, our state switches to RESPONSE to indicate we received something
         this.session.data.status = RPStatus.PROCESSING;
 
@@ -160,11 +169,11 @@ export class RP {
             messages: []
         }
 
-        if (this.session.data.state != state) {
+        if (this.session.uuid != state) {
             this.session.data.result.messages.push({
                 code: 'INVALID_STATE',
                 message: 'Verifier states did not match',
-                expectedState: this.session.data.state,
+                expectedState: this.session.uuid,
                 receivedState: state
             });
             // no need to proceed further, something really bad is going on and the content
@@ -192,7 +201,7 @@ export class RP {
         }
 
         if (response.vp_token) {
-            await this.parseVPToken(response.vp_token);
+            await this.parseVPToken(JSON.parse(response.vp_token));
         }
         else {
             this.session.data.result!.messages.push({
@@ -206,7 +215,7 @@ export class RP {
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.presentation.query) {
+        if (this.dcql) {
             return await this.parseDCQLToken(vptoken);
         }
         else {
@@ -228,15 +237,15 @@ export class RP {
         }
 
         this.session.data.result!.credentials = {};
-        for (const presId of this.presentation.query.credentials) {
-            const submission = new DCQLSubmission(this, presId, this.presentation.query.credentials[presId], vptoken[presId]);
+        for (const presentation of this.dcql!.credentials) {
+            const submission = new DCQLSubmission(this, presentation, vptoken[presentation.id]);
 
             await submission.validate();
             if (submission.messages.length) {
                 this.session.data.result!.messages = this.session.data.result!.messages.concat(submission.messages);
             }
 
-            this.session.data.result!.credentials[presId] = submission.credentials;
+            this.session.data.result!.credentials[presentation.id] = submission.credentials;
         }
         return this.session.data.result;
     }
