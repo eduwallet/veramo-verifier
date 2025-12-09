@@ -187,6 +187,7 @@ export class DCQLSubmission
             }
         }
 
+        this.credentials.push(ec);
         return ec;
     }
 }
