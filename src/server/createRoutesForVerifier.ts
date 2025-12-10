@@ -4,10 +4,12 @@ import { Verifier } from "verifier/Verifier";
 import { getBasePath } from '@utils/getBasePath';
 import { getBaseUrl } from '@utils/getBaseUrl';
 import { checkOffer, checkStatus, createOffer, getDidSpec, getOffer, getPresentationDef, receiveResponse } from './endpoints';
+import { createDcqlOffer } from './endpoints/createDcqlOffer';
 
 const debug = Debug(`verifier:server`)
 
 const create_offer_path = '/api/create-offer/:presentationid';
+const create_dcql_offer_path = '/api/create-dcql-offer';
 const get_offer_path = '/get-offer/:state';
 export const get_presentation_path = '/get-presentation/:presentationid';
 export const response_path = '/response/:state';
@@ -26,6 +28,14 @@ export async function createRoutesForVerifier(verifier:Verifier, app:Express) {
         '/' + verifier.name + get_offer_path,
         '/' + verifier.name + response_path,
         '/' + verifier.name + get_presentation_path,
+        '/' + verifier.name + check_offer_path
+    );
+
+    createDcqlOffer(
+        verifier,
+        create_dcql_offer_path,
+        '/' + verifier.name + get_offer_path,
+        '/' + verifier.name + response_path,
         '/' + verifier.name + check_offer_path
     );
 

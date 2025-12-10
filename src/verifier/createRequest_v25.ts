@@ -11,13 +11,13 @@ export function createRequest_v25(rp:RP)
 {
     debug('Creating v25 authorization request using input descriptor/PEX')   ;
     const presentation_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(get_presentation_path, {presentationid: rp.presentation.id});
-    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.state});
+    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.session.uuid});
     return {
         // basic RequestObject attributes
         "scope": "openid",
         "response_type": 'vp_token id_token', // instructs the wallet to return a vp_token response with a SIOP id_token
         "response_mode": "direct_post", // default is using query or fragment elements in the callback
-        "state": rp.state,
+        "state": rp.session.uuid,
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-25.html#section-5.10.4
         // because we use a did as client identifier scheme, we must NOT prefix it with did:
         "client_id": rp.verifier.clientId(),
@@ -30,7 +30,7 @@ export function createRequest_v25(rp:RP)
         "client_id_scheme": "did", // UniMe workaround
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         // "The RP MUST send a nonce"
-        "nonce": rp.nonce,
+        "nonce": rp.session.data.nonce,
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9.1
         // "The aud Claim MUST equal to the issuer Claim value, when Dynamic Self-Issued OP Discovery is performed."
         "aud": rp.verifier.clientId(),

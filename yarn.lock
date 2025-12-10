@@ -154,6 +154,11 @@
   resolved "https://registry.yarnpkg.com/@esbuild/win32-x64/-/win32-x64-0.25.6.tgz#4276edd5c105bc28b11c6a1f76fb9d29d1bd25c1"
   integrity sha512-NgJPHHbEpLQgDH2MjQu90pzW/5vvXIZ7KOnPyNBm92A6WgZ/7b6fJyUBjoumLqeOQQGqY2QjQxRo97ah4Sj0cA==
 
+"@futuretense/secret-box@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@futuretense/secret-box/-/secret-box-1.0.0.tgz#91645629c8d29d8f42af23d20852b8cb8dbd655d"
+  integrity sha512-Q9LLz4Idx+ktTM0w9g/A69s1OA7JQeWLoCpLHXTKTzgJEE7fWI1wUkBJnj1Opi6UXIJ7VLdrtK1zwqI6dby9KA==
+
 "@isaacs/cliui@^8.0.2":
   version "8.0.2"
   resolved "https://registry.yarnpkg.com/@isaacs/cliui/-/cliui-8.0.2.tgz#b37667b7bc181c168782259bab42474fbf52b550"
@@ -188,6 +193,16 @@
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/@muisit/cryptokey/-/cryptokey-1.2.2.tgz#d6f07d8335d111142eb113cbd991710dd5a43ea1"
   integrity sha512-WZlngtraeLAMsuvObiNfErbJsTl13QC+uGT5jfdZTpIupEIfTyf0IryTx6RQwoLTCIlpmHJch8mLzS/rDQAyDg==
+  dependencies:
+    did-jwt "^8.0.11"
+    did-resolver "^4.1.0"
+    jose "^6.0.11"
+    multiformats "^13.3.2"
+
+"@muisit/cryptokey@^1.2.4":
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/@muisit/cryptokey/-/cryptokey-1.2.4.tgz#78661c0705a62df842856cd919b97529a7c365cd"
+  integrity sha512-brmxjcMpF1RJ0ZJfcyiW49x4PdPjLjSDLM2lJIVT2FKe3cHEXnepWFG0qFCbhrlmTe0jZUpV/XDe1kDo1NOCQw==
   dependencies:
     did-jwt "^8.0.11"
     did-resolver "^4.1.0"

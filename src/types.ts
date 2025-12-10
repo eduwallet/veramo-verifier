@@ -4,3 +4,8 @@ export interface Message {
 
     [x:string]: any;
 }
+
+export interface DCQL {
+    credentials: any[];
+    credential_sets: any[];
+}

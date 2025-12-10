@@ -5,6 +5,7 @@ import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from "@utils/resolveConfPath";
 import { getDbConnection } from "database";
 import { Presentation } from "packages/datastore/entities/Presentation";
+import { hasAdminBearerToken } from '@utils/adminBearerToken';
 
 export interface ClaimPresentation {
     id?:string;
@@ -48,8 +49,8 @@ export function getPresentationStore() {
     return _store;
 }
 
-export async function initialisePresentationStore() {
-
+async function readFromDB()
+{
     try {
         const dbConnection = await getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
@@ -81,7 +82,30 @@ export async function initialisePresentationStore() {
             if (cfg.input_descriptors || cfg.query) {
                 _store[obj.shortname] = cfg;
             }
-        } 
+        }
+    }
+    catch (e) {
+        console.error("Caught exception on presentation initialisation", e);
+    }
+}
+
+async function clearDB()
+{
+    try {
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Presentation);
+        await repo.clear();
+    }
+    catch (e) {
+        console.error("Caught exception on presentation initialisation", e);
+    }
+}
+
+async function readFromFile()
+{
+    try {
+        const dbConnection = await getDbConnection();
+        const repo = dbConnection.getRepository(Presentation);
     
         try {
             const options = loadJsonFiles<PresentationDefinition>({path: resolveConfPath('presentations')});
@@ -109,5 +133,15 @@ export async function initialisePresentationStore() {
     }
     catch (e) {
         console.error("Caught exception on presentation initialisation", e);
-    }   
+    }
+}
+
+export async function initialisePresentationStore() {
+    if (hasAdminBearerToken()) {
+        await readFromDB();
+    }
+    else {
+        await clearDB();
+    }
+    await readFromFile(); 
 }

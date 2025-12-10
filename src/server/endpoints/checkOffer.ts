@@ -21,17 +21,13 @@ export function checkOffer(verifier: Verifier, checkPath: string) {
         async (request: Request, response: Response<CheckOfferResponse>) => {
         try {
             const session = await verifier.sessionManager.get(request.params.state);
-            const rp = session.data.rp;
-            if (!rp) {
-                return sendErrorResponse(response, 404, 'No authorization request could be found');
-            }
             const responseObject:CheckOfferResponse = {
-                status: rp.status,
-                created: dayjs(rp.created).format(),
-                lastUpdate: dayjs(rp.lastUpdate).format()
+                status: session.data.status,
+                created: dayjs(session.data.created).format(),
+                lastUpdate: dayjs(session.data.lastUpdate).format()
             };
-            if (rp.status == RPStatus.RESPONSE) {
-                responseObject.result = rp.result;
+            if (session.data.status == RPStatus.RESPONSE) {
+                responseObject.result = session.data.result;
             }
             return response.send(responseObject);
         } catch (e) {

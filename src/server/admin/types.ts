@@ -18,11 +18,14 @@ export interface KeyScheme
     isController: boolean;
 }
 
+
 export interface IdentifierScheme
 {
     did: string;
     provider: string;
     alias: string;
+    path?:string;
+    services?:string;
     saved: string;
     updated:string;
     keys:KeyScheme[];
@@ -33,6 +36,8 @@ export async function identifierToScheme(id:Identifier) {
         did: id.did,
         provider: id.provider || '',
         alias: id.alias || '',
+        ...(id.path && {path: id.path}),
+        ...(id.services && {services: id.services}),
         saved: moment(id.saveDate).format('YYYY-MM-DD HH:mm:ss'),
         updated: moment(id.updateDate).format('YYYY-MM-DD HH:mm:ss'),
         keys: []

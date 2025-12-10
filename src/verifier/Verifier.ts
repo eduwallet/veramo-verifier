@@ -7,8 +7,9 @@ import { getPresentationStore, PresentationDefinition } from "presentations/Pres
 import { StatusList } from "statuslist/StatusList";
 import { SessionStateManager } from '@utils/SessionStateManager';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from 'database';
-import { Identifier, PrivateKey } from 'packages/datastore';
+import { Identifier } from 'packages/datastore';
+import { getDIDConfigurationStore } from 'dids/Store';
+import { Session } from 'packages/datastore/entities/Session';
 
 export interface VerifierOptions {
     name:string;
@@ -17,10 +18,6 @@ export interface VerifierOptions {
     path:string;
     presentations:string[];
     metadata?: any;
-}
-
-interface RPSessions {
-    [x:string]: RP;
 }
 
 export class Verifier {
@@ -34,7 +31,7 @@ export class Verifier {
     public eventEmitter:EventEmitter;
     public sessionManager:SessionStateManager;
     public presentations:string[];
-    public sessions:RPSessions = {};
+    public sessions:Map<string,RP>;
     public statusList:StatusList;
     public metadata?:any;
 
@@ -45,30 +42,26 @@ export class Verifier {
         this.adminToken = opts.adminToken;
         this.path = opts.path;
         this.eventEmitter = new EventEmitter();
-        this.sessionManager = new SessionStateManager();
+        this.sessionManager = new SessionStateManager(this.name);
+        this.sessions = new Map();
         this.presentations = opts.presentations;
         this.statusList = new StatusList();
         this.metadata = opts.metadata;
     }
 
     public async initialise() {
-        const dbConnection = await getDbConnection();
-        const ids = dbConnection.getRepository(Identifier);
-        this.identifier = await ids.createQueryBuilder('identifier')
-            .innerJoinAndSelect("identifier.keys", "key")
-            .where('did=:did', {did: this.did})
-            .orWhere('alias=:alias', {alias: this.did})
-            .getOne();
-        
+        const store = getDIDConfigurationStore();
         if (!this.did) {
             throw new Error('Missing issuer did configuration');
         }
-        const dbKey = this.identifier!.keys[0];
-        const pkeys = dbConnection.getRepository(PrivateKey);
-        const pkey = await pkeys.findOneBy({alias:dbKey.kid});
 
-        this.key = await Factory.createFromType(dbKey.type, pkey?.privateKeyHex);
-
+        const keymaterial = await store.get(this.did);
+        
+        if (!keymaterial?.identifier || !keymaterial.identifier.keys || !keymaterial.key) {
+            throw new Error("Missing keys or identifier");
+        }
+        this.identifier = keymaterial.identifier;
+        this.key = keymaterial.key;
     }
     
     public clientId()
@@ -82,8 +75,14 @@ export class Verifier {
         return getBaseUrl() + '/' + this.name;
     }
 
-    public async getRPForPresentation(presentationId:string): Promise<RP> {
-        return new RP(this, this.getPresentation(presentationId)!);
+    public async getRPForSession(session:Session): Promise<RP> {
+        if (session.data.presentationId) {
+            return new RP(this, this.getPresentation(session.data.presentation)!, session);
+        }
+        else if(session.data.dcql) {
+            return new RP(this, session.data.dcql, session);
+        }
+        throw new Error("No relying party could be created");
     }
 
     public signingAlgorithm():string
@@ -96,12 +95,12 @@ export class Verifier {
             "jwt_vc_json": {
                 "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
-            "vc+sd-jwt": {
-                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-            },
-            "dc+sd-jwt": {
-                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-            }
+//            "vc+sd-jwt": {
+//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+//            },
+//            "dc+sd-jwt": {
+//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+//            }
         };
     }
 

@@ -11,7 +11,7 @@ export interface PresentationResult {
 
 export interface AuthorizationResponse
 {
-    vp_token: PresentationResult;
+    vp_token: string;
     code?:string;
     id_token?:string;
     iss?:string;

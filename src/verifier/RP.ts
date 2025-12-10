@@ -1,7 +1,7 @@
 import { Verifier } from "./Verifier";
 import { v4 } from 'uuid';
 import { DCQLSubmission, ExtractedCredential } from "./DCQLSubmission";
-import { Message } from "types";
+import { DCQL, Message } from "types";
 import { PresentationDefinition } from "presentations/PresentationStore";
 import { Factory } from "@muisit/cryptokey";
 import { JWT } from "@muisit/simplejwt";
@@ -10,6 +10,7 @@ import { AuthorizationResponse, Presentation, PresentationResult } from "types/a
 import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
 import { PresentationSubmission } from "./PresentationSubmission";
+import { Session } from "packages/datastore/entities/Session";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -26,29 +27,35 @@ interface Credentials {
 export interface VPResult {
     issuer?:string;
     credentials?:Credentials;
-    nonce?:string|undefined;
-    state:string|undefined;
+    nonce?:string;
+    state?:string;
     messages:Message[];
 }
 
 export class RP {
     public verifier:Verifier;
-    public presentation:PresentationDefinition;
+    public presentation?:PresentationDefinition;
+    public dcql?:DCQL;
+    public session:Session;
 
-    // session state values
-    public authorizationRequest?:any;
-    public state:string|undefined;
-    public nonce:string|undefined;
-    public status:RPStatus = RPStatus.INIT;
-    public created:Date;
-    public lastUpdate:Date;
-    public result:VPResult|undefined;
-
-    public constructor(v:Verifier, p:PresentationDefinition) {
+    public constructor(v:Verifier, p:PresentationDefinition|any, s:Session) {
         this.verifier = v;
-        this.presentation = p;
-        this.created = new Date();
-        this.lastUpdate = new Date();
+        if (p && (p as PresentationDefinition).id && typeof(p) == 'object') {
+            this.presentation = p as PresentationDefinition;
+        }
+        else if (p && (p as any).credentials) {
+            this.dcql = p;
+        }
+        this.session = s;
+        if (!s.data.created) {
+            s.data.created = new Date();
+            s.data.lastUpdate = new Date();
+        }
+        if (!this.session.data.result) {
+            this.session.data.result = {
+                messages:[]
+            };
+        }
     }
 
     public async toJWT(payload:any, type:string):Promise<string> {
@@ -61,24 +68,27 @@ export class RP {
         jwt.payload = payload;
 
         await jwt.sign(this.verifier.key!);
-        this.lastUpdate = new Date();
+        this.session.data.lastUpdate = new Date();
         return jwt.token;
     }
 
     public createAuthorizationRequest(): AuthorizationRequest {
-        this.status = RPStatus.CREATED;
-        this.nonce = v4();
-        if (this.presentation.query) {
-            this.authorizationRequest = createRequest_v28(this);
+        this.session.data.status = RPStatus.CREATED;
+        this.session.data.nonce = v4();
+        if (this.dcql) {
+            this.session.data.authorizationRequest = createRequest_v28(this, this.dcql);
         }
-        else if (this.presentation.input_descriptors) {
-            this.authorizationRequest = createRequest_v25(this);
+        else if (this.presentation?.query) {
+            this.session.data.authorizationRequest = createRequest_v28(this, this.presentation.query);
+        }
+        else if (this.presentation?.input_descriptors) {
+            this.session.data.authorizationRequest = createRequest_v25(this);
         }
         else {
             throw new Error("missing query values");
         }
-        this.lastUpdate = new Date();
-        return this.authorizationRequest;
+        this.session.data.lastUpdate = new Date();
+        return this.session.data.authorizationRequest;
     }
 
     public clientMetadata() {
@@ -106,7 +116,7 @@ export class RP {
             }
         }
         catch (e) {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'INVALID_JWT',
                 message: 'Could not decode JWT',
                 jwt: token
@@ -118,7 +128,7 @@ export class RP {
         // iss and sub must be equal
         // TODO: Sphereon only sends iss, not sub....
         if (jwt.payload?.iss && jwt.payload?.sub && jwt.payload.iss != jwt.payload.sub) {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'INVALID_JWT',
                 message: 'iss and sub claims invalid',
                 jwt: token
@@ -128,7 +138,7 @@ export class RP {
         else {
             const skey = await Factory.resolve(jwt.payload!.iss);
             if (!skey) {
-                this.result!.messages.push({
+                this.session.data.result!.messages.push({
                     code: 'INVALID_JWT',
                     message: 'Could not find a signing key',
                     jwt: token
@@ -137,7 +147,7 @@ export class RP {
             }
             else {
                 if (!jwt.verify(skey)) {
-                    this.result!.messages.push({
+                    this.session.data.result!.messages.push({
                         code: 'INVALID_JWT',
                         message: 'Signature could not be validated',
                         jwt: token
@@ -146,43 +156,43 @@ export class RP {
                 }
             }
         }
-        this.result!.issuer = jwt.payload!.iss;
+        this.session.data.result!.issuer = jwt.payload!.iss;
         return true;
     }
 
-    public async processResponse(state:string, response:AuthorizationResponse, submission: any) {
+    public async processResponse(state:string, response:AuthorizationResponse) {
         // whatever happens, our state switches to RESPONSE to indicate we received something
-        this.status = RPStatus.PROCESSING;
+        this.session.data.status = RPStatus.PROCESSING;
 
-        this.result = {
+        this.session.data.result = {
             state: state,
             messages: []
         }
 
-        if (this.state != state) {
-            this.result.messages.push({
+        if (this.session.uuid != state) {
+            this.session.data.result.messages.push({
                 code: 'INVALID_STATE',
                 message: 'Verifier states did not match',
-                expectedState: this.state,
+                expectedState: this.session.uuid,
                 receivedState: state
             });
             // no need to proceed further, something really bad is going on and the content
             // of the response simply cannot be trusted at all
-            this.status = RPStatus.RESPONSE;
-            return this.result;
+            this.session.data.status = RPStatus.RESPONSE;
+            return this.session.data.result;
         }
 
         // we expect an id_token in the response to signal the wallet holder key
         if (!response.id_token)
         {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'INVALID_RESPONSE',
                 message: 'Missing id_token'
             });
         }
         else {
             if(!await this.parseIDToken(response.id_token)) {
-                this.result!.messages.push({
+                this.session.data.result!.messages.push({
                     code: 'INVALID_ID_TOKEN',
                     message: 'Could not parse and validate ID token',
                     payload: response.id_token
@@ -191,21 +201,21 @@ export class RP {
         }
 
         if (response.vp_token) {
-            await this.parseVPToken(response.vp_token);
+            await this.parseVPToken(JSON.parse(response.vp_token));
         }
         else {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'INVALID_RESPONSE',
                 message: 'Missing vp_token'
             });
         }
-        this.status = RPStatus.RESPONSE;
-        return this.result;
+        this.session.data.status = RPStatus.RESPONSE;
+        return this.session.data.result;
     }
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.presentation.query) {
+        if (this.dcql) {
             return await this.parseDCQLToken(vptoken);
         }
         else {
@@ -218,7 +228,7 @@ export class RP {
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-8.1
         //  vp_token: REQUIRED. This is a JSON-encoded object containing entries where the key is the id value used for a Credential Query in the DCQL query and the value is an array of one or more Presentations that match the respective Credential Query. 
         if (!vptoken || Object.keys(vptoken).length == 0) {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'NO_CREDENTIALS_FOUND',
                 message: 'Response does not contain credentials',
                 payload: vptoken
@@ -226,18 +236,18 @@ export class RP {
             return;
         }
 
-        this.result!.credentials = {};
-        for (const presId of this.presentation.query.credentials) {
-            const submission = new DCQLSubmission(this, presId, this.presentation.query.credentials[presId], vptoken[presId]);
+        this.session.data.result!.credentials = {};
+        for (const presentation of this.dcql!.credentials) {
+            const submission = new DCQLSubmission(this, presentation, vptoken[presentation.id]);
 
             await submission.validate();
             if (submission.messages.length) {
-                this.result!.messages = this.result!.messages.concat(submission.messages);
+                this.session.data.result!.messages = this.session.data.result!.messages.concat(submission.messages);
             }
 
-            this.result!.credentials[presId] = submission.credentials;
+            this.session.data.result!.credentials[presentation.id] = submission.credentials;
         }
-        return this.result;
+        return this.session.data.result;
     }
 
     private async parsePresentation(vptoken:Presentation)
@@ -249,7 +259,7 @@ export class RP {
         // Verifiable Presentations. Each Verifiable Presentation MUST be represented as a JSON string (that is a
         // base64url-encoded value) or a JSON object depending on a format as defined in Appendix A of OpenID4VCI
         if (!vptoken) {
-            this.result!.messages.push({
+            this.session.data.result!.messages.push({
                 code: 'NO_CREDENTIALS_FOUND',
                 message: 'Response does not contain credentials',
                 payload: vptoken
@@ -261,16 +271,16 @@ export class RP {
         if (!Array.isArray(tokens) && typeof(vptoken) == 'string') {
             tokens = [vptoken];
         }
-        this.result!.credentials = {};
+        this.session.data.result!.credentials = {};
         for (const token of tokens) {
             const submission = new PresentationSubmission(this, token);
 
             await submission.validate();
             if (submission.messages.length) {
-                this.result!.messages = this.result!.messages.concat(submission.messages);
+                this.session.data.result!.messages = this.session.data.result!.messages.concat(submission.messages);
             }
 
-            this.result!.credentials[submission.id] = submission.credentials;
+            this.session.data.result!.credentials[submission.id] = submission.credentials;
         }
     }
 }

@@ -25,6 +25,14 @@ export class Identifier extends BaseEntity {
   // @ts-ignore
   alias?: string
 
+  @Column({ type: 'varchar', nullable: true })
+  // @ts-ignore
+  path?: string
+
+  @Column({ type: 'text', nullable: true })
+  // @ts-ignore
+  services?: string
+
   @BeforeInsert()
   setSaveDate() {
     this.saveDate = new Date()
@@ -36,11 +44,11 @@ export class Identifier extends BaseEntity {
     this.updateDate = new Date()
   }
 
-  @Column({ type: 'timestamp', select: false })
+  @Column({ type: 'timestamp', select: true })
   // @ts-ignore
   saveDate: Date
 
-  @Column({ type: 'timestamp', select: false })
+  @Column({ type: 'timestamp', select: true })
   // @ts-ignore
   updateDate: Date
 
