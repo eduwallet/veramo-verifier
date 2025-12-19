@@ -7,5 +7,5 @@ export interface Message {
 
 export interface DCQL {
     credentials: any[];
-    credential_sets: any[];
+    credential_sets?: any[];
 }

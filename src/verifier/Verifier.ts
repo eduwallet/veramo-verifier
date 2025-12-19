@@ -77,7 +77,7 @@ export class Verifier {
 
     public async getRPForSession(session:Session): Promise<RP> {
         if (session.data.presentationId) {
-            return new RP(this, this.getPresentation(session.data.presentation)!, session);
+            return new RP(this, this.getPresentation(session.data.presentationId)!, session);
         }
         else if(session.data.dcql) {
             return new RP(this, session.data.dcql, session);

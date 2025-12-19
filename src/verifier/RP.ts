@@ -38,13 +38,13 @@ export class RP {
     public dcql?:DCQL;
     public session:Session;
 
-    public constructor(v:Verifier, p:PresentationDefinition|any, s:Session) {
+    public constructor(v:Verifier, p:PresentationDefinition|DCQL, s:Session) {
         this.verifier = v;
         if (p && (p as PresentationDefinition).id && typeof(p) == 'object') {
             this.presentation = p as PresentationDefinition;
         }
-        else if (p && (p as any).credentials) {
-            this.dcql = p;
+        else if (p && (p as DCQL).credentials) {
+            this.dcql = p as DCQL;
         }
         this.session = s;
         if (!s.data.created) {
@@ -85,6 +85,8 @@ export class RP {
             this.session.data.authorizationRequest = createRequest_v25(this);
         }
         else {
+            console.error("dcql", this.dcql);
+            console.error("presentation", this.presentation);
             throw new Error("missing query values");
         }
         this.session.data.lastUpdate = new Date();
