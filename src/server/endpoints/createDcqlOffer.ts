@@ -8,7 +8,7 @@ import { getBaseUrl } from '@utils/getBaseUrl';
 
 const debug = Debug("verifier:createOffer");
 interface CreateOfferRequest {
-    dcql:string;
+    dcql:any;
 }
 
 interface CreateOfferResponse {
@@ -32,7 +32,20 @@ export function createDcqlOffer(verifier: Verifier, createOfferPath: string, off
             const requestUri = 'openid4vp://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
 
             // convert the query to proper JSON, throws an error if it fails
-            session.data.dcql = JSON.parse(request.body.dcql);
+            if (typeof(request.body.dcql) == 'string') {
+                try {
+                    session.data.dcql = JSON.parse(request.body.dcql);
+                }
+                catch (e) {
+                    return sendErrorResponse(response, 400, 'DCQL JSON string could not be parsed', e);
+                }
+            }
+            else if (request.body.dcql && Object.keys(request.body.dcql) && request.body.dcql.credentials) {
+                session.data.dcql = request.body.dcql;
+            }
+            else {
+                return sendErrorResponse(response, 400, 'DCQL JSON object not found');
+            }
 
             const rp = await verifier.getRPForSession(session);
             if (!rp) {
