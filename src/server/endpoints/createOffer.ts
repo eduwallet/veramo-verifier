@@ -32,7 +32,7 @@ export function createOffer(verifier: Verifier, createOfferPath: string, offerPa
             // "when using request_uri, the only other required parameter ... is client_id"
             const requestUri = 'openid4vp://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
 
-            session.data.presentation = presentationId;
+            session.data.presentationId = presentationId;
             const rp = await verifier.getRPForSession(session);
             if (!rp) {
                 throw new Error("RP instance not configured");

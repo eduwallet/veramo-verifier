@@ -123,11 +123,7 @@ export class Verifier {
         if (this.presentations.includes(presentationId)) {
             const store = getPresentationStore();
             if (store[presentationId]) {
-                // add the Verifier allowed VP formats explicitely to the presentation
-                // formats
-                var presentation = Object.assign({}, store[presentationId]);
-                //presentation.format = this.vpFormats();
-                return presentation;
+                return Object.assign({}, store[presentationId]);
             }
         }
         return null;
