@@ -29,7 +29,7 @@ export function createDcqlOffer(verifier: Verifier, createOfferPath: string, off
             const checkUri = getBaseUrl() + replaceParamsInUrl(checkPath, {state:session.uuid });
             // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
             // "when using request_uri, the only other required parameter ... is client_id"
-            const requestUri = 'openid4vp://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=' + encodeURIComponent(verifier.clientId());
+            const requestUri = 'openid4vp://?request_uri=' + encodeURIComponent(requestByReferenceURI) + '&client_id=decentralized_identifier:' + encodeURIComponent(verifier.clientId());
 
             // convert the query to proper JSON, throws an error if it fails
             if (typeof(request.body.dcql) == 'string') {
