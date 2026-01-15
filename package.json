@@ -1,6 +1,6 @@
 {
   "name": "veramo-verifier",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Veramo Verifier",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
