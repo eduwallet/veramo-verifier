@@ -1,11 +1,10 @@
 import moment from 'moment';
 import {Bitstring} from '@digitalcredentials/bitstring';
-import { VPResultMessage } from 'verifier/RP';
-import { Message } from 'types';
 import { JWT } from '@muisit/simplejwt';
-import {gzip, ungzip} from 'pako';
-import { inflateSync, deflateSync } from 'zlib';
+import { ungzip } from 'pako';
+import { inflateSync } from 'zlib';
 import { fromString } from 'uint8arrays';
+import { findKeyOfJwt } from '../utils/findKeyOfJwt';
 
 interface CachedList {
     id: string;
@@ -34,7 +33,9 @@ interface StatusCheckResult {
 }
 
 export interface StatusListEntry {
-    type:string;
+    type?:string;
+    idx?:number;
+    uri?:string;
     [x:string]: any;
 }
 
@@ -50,7 +51,8 @@ export class StatusList
         let purpose:string = 'unknown';
         let size:number = 1;
         let messages:any = null;
-        switch (statusListEntry.type) {
+        // if there is no type entry, assume it is an ietf status list
+        switch (statusListEntry.type ?? 'status+jwt') {
             default:
             case 'BitstringStatusListEntry':
                 url = statusListEntry.statusListCredential;
@@ -84,8 +86,8 @@ export class StatusList
                 purpose = 'suspension';
                 break;
             case 'status+jwt':
-                url = statusListEntry.uri;
-                index = statusListEntry.idx;
+                url = statusListEntry.uri ?? '';
+                index = statusListEntry.idx ?? 0;
                 // size is set on the status list output
                 type = 'ietf';
                 break;
@@ -221,7 +223,7 @@ export class StatusList
             throw new Error('STATUSLIST_INVALID:Statuslist did not properly decode from JWT');
         }
 
-        const ckey = await jwt.findKey();
+        const ckey = await findKeyOfJwt(jwt);
         if (!ckey) {
             throw new Error('STATUSLIST_INVALID:Statuslist could not be verified');
         }

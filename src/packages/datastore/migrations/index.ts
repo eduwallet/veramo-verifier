@@ -4,6 +4,7 @@ import { Verifiers1759493650000 } from './3.Verifiers.js';
 import { DIDPath1760691999150 } from './4.DIDPath.js';
 import { EncKey1762521078111 } from './5.EncKey.js';
 import { Sessions1764077942111 } from './6.Sessions.js';
+import { VerMetadata1768311183222 } from './7.VerMetadata.js';
 
 export * from './migration-functions.js'
 
@@ -13,5 +14,6 @@ export const migrations = [
   Verifiers1759493650000,
   DIDPath1760691999150,
   EncKey1762521078111,
-  Sessions1764077942111
+  Sessions1764077942111,
+  VerMetadata1768311183222
 ]

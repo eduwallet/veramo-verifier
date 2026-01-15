@@ -21,7 +21,9 @@ export function createRequest_v28(rp:RP, dcql:any)
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9.2
         // "This endpoint to which the Self-Issued OP shall deliver the authentication result is conveyed in the standard parameter redirect_uri."
         //"redirect_uri": response_uri,
-        "client_id_scheme": "did", // UniMe workaround
+        // UniMe requires a client_id_scheme, but the library used by Animo/Paradym disqualifies the request based on that attribute
+        // Apparently, if present, the version is < 22, but the rest implies > 25
+        // "client_id_scheme": "did",
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         // "The RP MUST send a nonce"
         "nonce": rp.session.data.nonce,
@@ -33,6 +35,7 @@ export function createRequest_v28(rp:RP, dcql:any)
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
         "client_metadata": rp.clientMetadata(),
         "id_token_type": "attester_signed_id_token subject_signed_id_token",
-        "dcql_query": dcql
+        "dcql_query": dcql,
+        ...(rp.presentation?.purpose && {"purpose": rp.presentation!.purpose})
     }
 }

@@ -94,6 +94,7 @@ export interface VerifierScheme
     did:string;
     admin_token:string;
     presentations:string;
+    metadata?:string;
     saved: string;
     updated:string;
 }
@@ -107,6 +108,7 @@ export async function verifierToScheme(data:Verifier)
         did: data.did,
         presentations: data.presentations ?? '[]',
         admin_token: data.admin_token,
+        metadata: data.metadata,
         saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),
         updated: moment(data.updateDate).format('YYYY-MM-DD HH:mm:ss')
     };

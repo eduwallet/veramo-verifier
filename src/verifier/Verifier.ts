@@ -76,8 +76,13 @@ export class Verifier {
     }
 
     public async getRPForSession(session:Session): Promise<RP> {
+<<<<<<< HEAD
         if (session.data.presentation) {
             return new RP(this, this.getPresentation(session.data.presentation)!, session);
+=======
+        if (session.data.presentationId) {
+            return new RP(this, this.getPresentation(session.data.presentationId)!, session);
+>>>>>>> main
         }
         else if(session.data.dcql) {
             return new RP(this, session.data.dcql, session);
@@ -92,15 +97,18 @@ export class Verifier {
 
     public vpFormats():any {
         return {
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.1.3.1.3
             "jwt_vc_json": {
                 "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
 //            "vc+sd-jwt": {
 //                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
 //            },
-//            "dc+sd-jwt": {
-//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-//            }
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.3.4
+            "dc+sd-jwt": {
+                // DIIPv4 requires ES256, so just stick to that for now
+                "sd-jwt_alg_values": ['ES256']
+            }
         };
     }
 
@@ -123,11 +131,7 @@ export class Verifier {
         if (this.presentations.includes(presentationId)) {
             const store = getPresentationStore();
             if (store[presentationId]) {
-                // add the Verifier allowed VP formats explicitely to the presentation
-                // formats
-                var presentation = Object.assign({}, store[presentationId]);
-                //presentation.format = this.vpFormats();
-                return presentation;
+                return Object.assign({}, store[presentationId]);
             }
         }
         return null;

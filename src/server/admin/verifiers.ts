@@ -36,15 +36,17 @@ interface StoreRequest {
     name:string;
     did:string;
     admin_token:string;
+    metadata?:string;
     presentations:any;
 }
 
-async function setData(obj:Verifier, name:string, path:string, did:string, admin_token:string, presentations:string)
+async function setData(obj:Verifier, name:string, path:string, did:string, admin_token:string, presentations:string, metadata?:string)
 {
     obj.path = path;
     obj.name = name;
     obj.did = did;
     obj.admin_token = admin_token;
+    obj.metadata = metadata;
     const presString = JSON.stringify(presentations);
     if (presString && presString.length) {
         obj.presentations = presString;
@@ -65,7 +67,7 @@ export async function storeVerifier(request: Request<StoreRequest>, response: Re
             throw new Error("Verifier not found for POST");
         }
 
-        await setData(obj, request.body.name, request.body.path, request.body.did, request.body.admin_token, request.body.presentations);
+        await setData(obj, request.body.name, request.body.path, request.body.did, request.body.admin_token, request.body.presentations, request.body.metadata);
         await repo.save(obj);
 
         return response.status(200).json(await verifierToScheme(obj));
@@ -82,6 +84,7 @@ interface CreateRequest {
     path:string;
     did:string;
     admin_token:string;
+    metadata?:string;
     presentations:any;
 }
 export async function createVerifier(request: Request<CreateRequest>, response: Response) {
@@ -96,7 +99,7 @@ export async function createVerifier(request: Request<CreateRequest>, response: 
         }
 
         const obj = new Verifier();
-        await setData(obj, request.body.name, request.body.path, request.body.did, request.body.admin_token, request.body.presentations);
+        await setData(obj, request.body.name, request.body.path, request.body.did, request.body.admin_token, request.body.presentations, request.body.metadata);
         await repo.save(obj);
 
         const json = await verifierToScheme(obj);

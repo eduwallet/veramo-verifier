@@ -11,6 +11,7 @@ import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
 import { PresentationSubmission } from "./PresentationSubmission";
 import { Session } from "packages/datastore/entities/Session";
+import { findKeyOfJwt } from "@utils/findKeyOfJwt";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -38,13 +39,13 @@ export class RP {
     public dcql?:DCQL;
     public session:Session;
 
-    public constructor(v:Verifier, p:PresentationDefinition|any, s:Session) {
+    public constructor(v:Verifier, p:PresentationDefinition|DCQL, s:Session) {
         this.verifier = v;
         if (p && (p as PresentationDefinition).id && typeof(p) == 'object') {
             this.presentation = p as PresentationDefinition;
         }
-        else if (p && (p as any).credentials) {
-            this.dcql = p;
+        else if (p && (p as DCQL).credentials) {
+            this.dcql = p as DCQL;
         }
         this.session = s;
         if (!s.data.created) {
@@ -58,7 +59,7 @@ export class RP {
         }
     }
 
-    public async toJWT(payload:any, type:string):Promise<string> {
+    public async toJWT(payload:any, type:string, wallet_nonce?:string):Promise<string> {
         const jwt = new JWT();
         jwt.header = {
             alg: this.verifier.signingAlgorithm(),
@@ -66,6 +67,10 @@ export class RP {
             typ: type
         };
         jwt.payload = payload;
+
+        if (wallet_nonce) {
+            jwt.payload!.wallet_nonce = wallet_nonce;
+        }
 
         await jwt.sign(this.verifier.key!);
         this.session.data.lastUpdate = new Date();
@@ -85,6 +90,8 @@ export class RP {
             this.session.data.authorizationRequest = createRequest_v25(this);
         }
         else {
+            console.error("dcql", this.dcql);
+            console.error("presentation", this.presentation);
             throw new Error("missing query values");
         }
         this.session.data.lastUpdate = new Date();
@@ -93,6 +100,8 @@ export class RP {
 
     public clientMetadata() {
         return Object.assign({}, {
+            // https://www.rfc-editor.org/rfc/rfc7591.html#section-2
+            "client_name": this.presentation?.name ?? this.verifier.name,
             "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "response_types_supported": ['vp_token'], // , 'id_token',
@@ -136,7 +145,7 @@ export class RP {
             return false;
         }
         else {
-            const skey = await Factory.resolve(jwt.payload!.iss);
+            const skey = await findKeyOfJwt(jwt);
             if (!skey) {
                 this.session.data.result!.messages.push({
                     code: 'INVALID_JWT',
@@ -182,15 +191,9 @@ export class RP {
             return this.session.data.result;
         }
 
-        // we expect an id_token in the response to signal the wallet holder key
-        if (!response.id_token)
+        // we may get an id_token in the response to signal the wallet holder key
+        if (response.id_token)
         {
-            this.session.data.result!.messages.push({
-                code: 'INVALID_RESPONSE',
-                message: 'Missing id_token'
-            });
-        }
-        else {
             if(!await this.parseIDToken(response.id_token)) {
                 this.session.data.result!.messages.push({
                     code: 'INVALID_ID_TOKEN',
@@ -215,15 +218,15 @@ export class RP {
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.dcql) {
-            return await this.parseDCQLToken(vptoken);
+        if (this.dcql || this.presentation?.query) {
+            return await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
         }
         else {
             return await this.parsePresentation(vptoken as unknown as Presentation);
         }
     }
 
-    private async parseDCQLToken(vptoken:PresentationResult)
+    private async parseDCQLToken(vptoken:PresentationResult, query:DCQL)
     {
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-8.1
         //  vp_token: REQUIRED. This is a JSON-encoded object containing entries where the key is the id value used for a Credential Query in the DCQL query and the value is an array of one or more Presentations that match the respective Credential Query. 
@@ -237,8 +240,8 @@ export class RP {
         }
 
         this.session.data.result!.credentials = {};
-        for (const presentation of this.dcql!.credentials) {
-            const submission = new DCQLSubmission(this, presentation, vptoken[presentation.id]);
+        for (const presentation of query.credentials) {
+            const submission = new DCQLSubmission(this, query, presentation, vptoken[presentation.id]);
 
             await submission.validate();
             if (submission.messages.length) {

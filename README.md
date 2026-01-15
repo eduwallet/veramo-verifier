@@ -92,9 +92,14 @@ An example using `dcql`:
     "query": {
       "credentials": [{
         "id": "GC",
-        "format": "jwt_vc_json",
+        "format": "dc+sd-jwt",
+        "meta": {
+          "vct_values": [
+            "https://issuer.dev.eduid.nl/vct/eduid"
+          ]
+        },
         "claims": [{
-          "path": ["credentialSubject", "id"]
+          "path": ["given_name"]
         }]
       }]
     }
@@ -132,6 +137,7 @@ This example defines a verifier endpoint for the `sportscentre`. The `adminToken
 The front-end-facing verifiers can interact with the Veramo-Verifier using their specific administrative `token`. These are the basic endpoints for this api:
 
 `/:instance/api/create-offer/:presentationid`: request a new authorization request object
+`/:instance/api/create-dcql-offer`: request a new authorization request object with a dcql query (no presentation required)
 `/:instance/api/check-offer/:state`: poll for status updates on a previously created authorization request
 `/:instance/api/check-status`: request a status update on a specific statuslist entry
 
@@ -253,16 +259,21 @@ The `claims` attribute contains the actual claims as present in the Verifiable C
 The `messages` list contains validation and verification messages gathered during parsing of the VerifiablePresentation. The following codes can be returned:
 
 - `INVALID_STATE`: the VP response lists a state that does not match the expected state. No further data is processed
-- `INVALID_JWT`: the VP JWT token could not be decoded correctly. No further data is processed
-- `UNVERIFIED_JWT`: the VP JWT token could not be verified, probably due to a missing or unverifiable signature
+- `INVALID_JWT`: the VP-JWT, SD-JWT or KB-JWT token could not be decoded correctly. No further data is processed
+- `JWT_UNVERIFIED`: the VP-JWT or KB-JWT token could not be verified, probably due to a missing or unverifiable signature
+- `JWT_VERIFIED`: the VP-JWT or KB-JWT was successfully verified
 - `NO_CREDENTIALS_FOUND`: the VP JWT did not contain the expected credentials list
+- `UNSUPPORTED_VC`: the VC format type is not supported
 - `INVALID_NONCE`: the VP JWT payload did not encode the nonce value that was expected
 - `INVALID_PRESENTATION`: an error occurred while decoding and verifying the constitution of the verifiable presentation
 - `INVALID_VC`: an error occurred during decoding of the VC JWT
-- `VC_NBF_ERROR`: the VC not-before value lies in the future
-- `VC_IAT_ERROR`: the VC issued-at value lies in the future
-- `VC_EXP_ERROR`: the VC expiry value lies in the past
-- `VC_AUD_ERROR`: the VC aud value does not match the issuer did
+- `INVALID_SDJWT`: an error occurred during decoding or validation of the SD-JWT
+- `MISSING_KB`: the key-binding jwt was not found
+- `INVALID_KB`: an error occurred during decoding or validation of the key-binding JWT
+- `NBF_ERROR`: the VC not-before value lies in the future
+- `IAT_ERROR`: the VC issued-at value lies in the future
+- `EXP_ERROR`: the VC expiry value lies in the past
+- `AUD_ERROR`: the VC aud value does not match the issuer did
 - `NO_STATUS_LIST`: no status list was assigned to the credential
 - `STATUSLIST_UNREACHABLE`: the status list assigned to the credential could not be contacted
 - `STATUSLIST_INVALID`: the status list did not properly encode the bit values
@@ -309,6 +320,7 @@ The response object looks similar to the following (JWT payload)
 ```json
 {
   "iat": 1725272520,
+  "nbf": 1725272520,
   "exp": 1725272640,
   "response_type": "vp_token",
   "scope": "openid",
@@ -316,11 +328,10 @@ The response object looks similar to the following (JWT payload)
   "response_uri": "<uri to send the wallet response to (see below)>",
   "response_mode": "direct_post",
   "nonce": "8472d4aa-0429-4084-8596-b6adebf7248c",
+  "wallet_nonce": "optional nonce value of the wallet to ensure no replays",
+  "aud": "<client-id for SIOPv2>",
   "state": "cb3349e1-8415-4d96-bd40-d03663836ad5",
-  "presentation_definition_uri": "<uri on the Veramo Agent to get the presentation request>",
-  "client_metadata": { ... }
-  },
-  "nbf": 1725272520,
+  "dcql_query": "<dcql query object>",
   "jti": "9f498f77-a3f3-4991-88aa-917c9fd7c06c",
   "iss": "<did key of the verifier agent for this instance>",
   "sub": "<did key of the verifier agent for this instance>"
@@ -358,6 +369,8 @@ This endpoint is stateless and requests the presentation definition as defined b
 
 In this example, the purpose of the entire presentation is the same as the purpose for requesting the one credential. The `given_name` is requested, which is always present, so the wallet can select all AcademicBaseCredential credentials it has available and allow the user to pick one.
 
+This type of presentation is only used in the outdated PEX type presentations.
+
 ### Receive Response
 
 `/:instance/response/:state`
@@ -369,24 +382,8 @@ The response object is a html form encoded set of key-values:
 ```
 expires_in: '300'
 state: '6c9c611d-ee10-4c9d-9af5-5992ad191019'
-presentation_submission: '{
-  "id":"grAU7C0oHg2oinn1IAcw6",
-  "definition_id":"ABC",
-  "descriptor_map":[{
-    "id":"ABC",
-    "format":"jwt_vp",
-    "path":"$",
-    "path_nested":{
-      "id":"ABC",
-      "format":"jwt_vc",
-      "path":"$.vp.verifiableCredential[0]"
-    }
-  }]
-}'
-vp_token: <JWT>
+vp_token: '["... SD-JWT token..."]'
 ```
-
-The `presentation_submission` indicates where to find the requested fields in the set of Verifiable Credentials transmitted. It is a response to the `constraints` field in the presentation definition above.
 
 The actual Verifiable Credentials are stored in the `vp_token` attribute. The Veramo-Verifier decodes and verifies the JWT and collects all the claims for the front-end-verifier.
 
@@ -394,6 +391,7 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
+|  v1.4.0 | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
 |  v1.3.0 | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
 |         | 7005e6c | 2025-11-25 | Database sessions, which implies a database migration |
 |         | 086ea5d | 2025-11-25 | Added `/api/version` endpoint that gives package version, node version, tag and commit information |

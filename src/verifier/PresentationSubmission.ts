@@ -79,7 +79,7 @@ export class PresentationSubmission
             }
             catch (e) {
                 this.messages.push({
-                    code: 'INCORRECT_TOKEN',
+                    code: 'INVALID_JWT',
                     message: 'Could not decode presentation response',
                     payload: token
                 });
@@ -132,19 +132,19 @@ export class PresentationSubmission
 
         if (payload?.nbf && payload.nbf > now) {
             const nbf = moment(payload.nbf * 1000).toISOString();
-            this.messages.push({code: 'VC_NBF_ERROR', message: `VC is not valid before ${nbf}`, nbf: payload.nbf, now});
+            this.messages.push({code: 'NBF_ERROR', message: `VC is not valid before ${nbf}`, nbf: payload.nbf, now});
         }
         if (payload?.iat && payload.iat > now) {
             const iat = moment(payload.iat * 1000).toISOString();
-            this.messages.push({code: 'VC_IAT_ERROR', message: `VC is issued in the future at ${iat}`, iat: payload.iat, now});
+            this.messages.push({code: 'IAT_ERROR', message: `VC is issued in the future at ${iat}`, iat: payload.iat, now});
         }
         if (payload?.exp && payload.exp <= now) {
             const exp = moment(payload.exp * 1000).toISOString();
-            this.messages.push({code: 'VC_EXP_ERROR', message: `VC expired at ${exp}`, exp: payload.exp, now});
+            this.messages.push({code: 'EXP_ERROR', message: `VC expired at ${exp}`, exp: payload.exp, now});
         }
 
         if (!payload.verifiableCredential) {
-            this.messages.push({code: 'VC_ERROR', message: `no credentials found in presentation`, payload});
+            this.messages.push({code: 'INVALID_VC', message: `no credentials found in presentation`, payload});
         }
         else {
             for (const vc of payload.verifiableCredential) {
