@@ -209,7 +209,7 @@
     jose "^6.0.11"
     multiformats "^13.3.2"
 
-"@muisit/simplejwt@1.0.2":
+"@muisit/simplejwt@^1.0.2":
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/@muisit/simplejwt/-/simplejwt-1.0.2.tgz#e241c314bb97778555a9e7e8c6d7f6821005bf2b"
   integrity sha512-kzIAtA3fg+l2yVR1Q3VopO8JqO08k3q/J3JzJfX/QuLuzT7ideQK8DNLovTpThN+Dx0KShWc2J45poIQCNQpHg==
@@ -247,6 +247,70 @@
   version "1.2.6"
   resolved "https://registry.yarnpkg.com/@scure/base/-/base-1.2.6.tgz#ca917184b8231394dd8847509c67a0be522e59f6"
   integrity sha512-g/nm5FgUa//MCj1gV09zTJTaM6KBAHqLN907YVQqf7zC49+DcO4B1so4ZX07Ef10Twr6nuqYEH9GEggFXA4Fmg==
+
+"@sd-jwt/core@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/core/-/core-0.18.0.tgz#333d0c878712c25ae9a0ccc120e8d6f43f3a57c0"
+  integrity sha512-JL5kKd93J1i5nDhePh1Bu+ho97QP5mI4G+fbs6Ypl0hbRYXIEPztaMDP5bQZHlEmCip2HZTuDaUkuw6iLBI9LQ==
+  dependencies:
+    "@sd-jwt/decode" "0.18.0"
+    "@sd-jwt/present" "0.18.0"
+    "@sd-jwt/types" "0.18.0"
+    "@sd-jwt/utils" "0.18.0"
+
+"@sd-jwt/crypto-nodejs@^0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/crypto-nodejs/-/crypto-nodejs-0.18.0.tgz#38010ae01955a6bef89c46c915fc78d8ddd784a3"
+  integrity sha512-3gdAKFTWOjzf0Y+wPnk6i7uIby0wSwt1fWqeCKIhMGBuuVn3b0LExnDHh367I+bCZ9cXT+6xtDJyfvlOiVvWnQ==
+
+"@sd-jwt/decode@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/decode/-/decode-0.18.0.tgz#bdae08cea61e8ebab3e72293cfbcd7359549f7a6"
+  integrity sha512-CPJnsqhI9khy0hiEunIjhbBqQveLqnMHBS5W+L1Q3t/hDV/cAv+fTG8Da8Ngx9dXkhEIyPVuVaRSHYMzH9kEJA==
+  dependencies:
+    "@sd-jwt/types" "0.18.0"
+    "@sd-jwt/utils" "0.18.0"
+
+"@sd-jwt/jwt-status-list@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/jwt-status-list/-/jwt-status-list-0.18.0.tgz#0596f8f3daebf46d36b9ffdc689ec40c5968039d"
+  integrity sha512-WK+wzIeZDdnk1jFrLJyYQRd3Onbo/AEWFvH95hhlNtmRgWaa/BqsFI4FDRKXDPmsep6+ilbKXw8StZVqghBxXw==
+  dependencies:
+    "@sd-jwt/types" "0.18.0"
+    "@sd-jwt/utils" "0.18.0"
+    pako "^2.1.0"
+
+"@sd-jwt/present@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/present/-/present-0.18.0.tgz#008c28fd5280189027b25326119704374847fe14"
+  integrity sha512-DXFRxEZECe790DVv0t3rV8HplvZZYUnKcDxRsr/ePcgHEQ6/CaqimJ2v100YT9FcHGFE3453Frnk/iLougyGow==
+  dependencies:
+    "@sd-jwt/decode" "0.18.0"
+    "@sd-jwt/types" "0.18.0"
+    "@sd-jwt/utils" "0.18.0"
+
+"@sd-jwt/sd-jwt-vc@^0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/sd-jwt-vc/-/sd-jwt-vc-0.18.0.tgz#6b4cd3101886a616cea34927fe8b219e495416a1"
+  integrity sha512-jl/5ywtSezX2ygkPqf7OIWAgscRsAX1uX+tcnUXDKL6Giu3E6r3wRmYdHNbijC2cqlhD1M+kXBFrFJZuXE3wIw==
+  dependencies:
+    "@sd-jwt/core" "0.18.0"
+    "@sd-jwt/jwt-status-list" "0.18.0"
+    "@sd-jwt/utils" "0.18.0"
+    zod "^4.3.5"
+
+"@sd-jwt/types@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/types/-/types-0.18.0.tgz#c7321fab14dd6c32c0e2d75b0a0032f9e63e042b"
+  integrity sha512-Rr5JL1nfIxV5LEPhRW9mn3joROW05wqelA/BRhyAiC0Md9/i+smH25+UL1VzyYEjzPxAmnVCNG8YrX27PPbw3g==
+
+"@sd-jwt/utils@0.18.0":
+  version "0.18.0"
+  resolved "https://registry.yarnpkg.com/@sd-jwt/utils/-/utils-0.18.0.tgz#730c5bd6a6838424a3ec725e73ba3844b72eb965"
+  integrity sha512-9hm3596quArahfs2JM2us32Gn4x/Si8Sg48RpQKkfXh/x2oO3b3Sl2d4aX08FywLAd5CepnC7EDiDR4BVncnJg==
+  dependencies:
+    "@sd-jwt/types" "0.18.0"
+    js-base64 "^3.7.8"
 
 "@sqltools/formatter@^1.2.5":
   version "1.2.5"
@@ -1070,6 +1134,11 @@ jose@^6.0.11:
   resolved "https://registry.yarnpkg.com/jose/-/jose-6.0.12.tgz#56253d94d46bd784addc4bde3691c323552fe7e4"
   integrity sha512-T8xypXs8CpmiIi78k0E+Lk7T2zlK4zDyg+o1CZ4AkOHgDg98ogdP2BeZ61lTFKFyoEwJ9RgAgN+SdM3iPgNonQ==
 
+js-base64@^3.7.8:
+  version "3.7.8"
+  resolved "https://registry.yarnpkg.com/js-base64/-/js-base64-3.7.8.tgz#af44496bc09fa178ed9c4adf67eb2b46f5c6d2a4"
+  integrity sha512-hNngCeKxIUQiEUN3GPJOkz4wF/YvdUdbNL9hsBcMQTkKzboD7T/q3OYOuuPZLUE6dBxSGpwhk5mwuDud7JVAow==
+
 lru-cache@^10.2.0:
   version "10.4.3"
   resolved "https://registry.yarnpkg.com/lru-cache/-/lru-cache-10.4.3.tgz#410fc8a17b70e598013df257c2446b7f3383f119"
@@ -1798,3 +1867,8 @@ zlib@^1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/zlib/-/zlib-1.0.5.tgz#6e7c972fc371c645a6afb03ab14769def114fcc0"
   integrity sha512-40fpE2II+Cd3k8HWTWONfeKE2jL+P42iWJ1zzps5W51qcTsOUKM5Q5m2PFb0CLxlmFAaUuUdJGc3OfZy947v0w==
+
+zod@^4.3.5:
+  version "4.3.5"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-4.3.5.tgz#aeb269a6f9fc259b1212c348c7c5432aaa474d2a"
+  integrity sha512-k7Nwx6vuWx1IJ9Bjuf4Zt1PEllcwe7cls3VNzm4CQ1/hgtFUK2bRNG3rvnpPUhFjmqJKAKtjV576KnUkHocg/g==

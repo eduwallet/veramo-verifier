@@ -58,7 +58,7 @@ export class RP {
         }
     }
 
-    public async toJWT(payload:any, type:string):Promise<string> {
+    public async toJWT(payload:any, type:string, wallet_nonce?:string):Promise<string> {
         const jwt = new JWT();
         jwt.header = {
             alg: this.verifier.signingAlgorithm(),
@@ -66,6 +66,10 @@ export class RP {
             typ: type
         };
         jwt.payload = payload;
+
+        if (wallet_nonce) {
+            jwt.payload!.wallet_nonce = wallet_nonce;
+        }
 
         await jwt.sign(this.verifier.key!);
         this.session.data.lastUpdate = new Date();
@@ -95,6 +99,8 @@ export class RP {
 
     public clientMetadata() {
         return Object.assign({}, {
+            // https://www.rfc-editor.org/rfc/rfc7591.html#section-2
+            "client_name": this.presentation?.name ?? this.verifier.name,
             "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "response_types_supported": ['vp_token'], // , 'id_token',
@@ -217,15 +223,15 @@ export class RP {
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.dcql) {
-            return await this.parseDCQLToken(vptoken);
+        if (this.dcql || this.presentation?.query) {
+            return await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation.query);
         }
         else {
             return await this.parsePresentation(vptoken as unknown as Presentation);
         }
     }
 
-    private async parseDCQLToken(vptoken:PresentationResult)
+    private async parseDCQLToken(vptoken:PresentationResult, query:DCQL)
     {
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-8.1
         //  vp_token: REQUIRED. This is a JSON-encoded object containing entries where the key is the id value used for a Credential Query in the DCQL query and the value is an array of one or more Presentations that match the respective Credential Query. 
@@ -239,8 +245,8 @@ export class RP {
         }
 
         this.session.data.result!.credentials = {};
-        for (const presentation of this.dcql!.credentials) {
-            const submission = new DCQLSubmission(this, presentation, vptoken[presentation.id]);
+        for (const presentation of query.credentials) {
+            const submission = new DCQLSubmission(this, query, presentation, vptoken[presentation.id]);
 
             await submission.validate();
             if (submission.messages.length) {

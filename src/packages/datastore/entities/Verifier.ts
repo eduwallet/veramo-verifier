@@ -34,6 +34,10 @@ export class Verifier extends BaseEntity {
     // @ts-ignore
     presentations: string
 
+    @Column('text')
+    // @ts-ignore
+    metadata: string
+
     @BeforeInsert()
     setSaveDate() {
         this.saveDate = new Date()

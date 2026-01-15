@@ -92,15 +92,18 @@ export class Verifier {
 
     public vpFormats():any {
         return {
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.1.3.1.3
             "jwt_vc_json": {
                 "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
             },
 //            "vc+sd-jwt": {
 //                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
 //            },
-//            "dc+sd-jwt": {
-//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-//            }
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.3.4
+            "dc+sd-jwt": {
+                // DIIPv4 requires ES256, so just stick to that for now
+                "sd-jwt_alg_values": ['ES256']
+            }
         };
     }
 

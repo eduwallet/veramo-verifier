@@ -34,7 +34,9 @@ interface StatusCheckResult {
 }
 
 export interface StatusListEntry {
-    type:string;
+    type?:string;
+    idx?:number;
+    uri?:string;
     [x:string]: any;
 }
 
@@ -50,7 +52,8 @@ export class StatusList
         let purpose:string = 'unknown';
         let size:number = 1;
         let messages:any = null;
-        switch (statusListEntry.type) {
+        // if there is no type entry, assume it is an ietf status list
+        switch (statusListEntry.type ?? 'status+jwt') {
             default:
             case 'BitstringStatusListEntry':
                 url = statusListEntry.statusListCredential;
@@ -84,8 +87,8 @@ export class StatusList
                 purpose = 'suspension';
                 break;
             case 'status+jwt':
-                url = statusListEntry.uri;
-                index = statusListEntry.idx;
+                url = statusListEntry.uri ?? '';
+                index = statusListEntry.idx ?? 0;
                 // size is set on the status list output
                 type = 'ietf';
                 break;
