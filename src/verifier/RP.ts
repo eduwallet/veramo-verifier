@@ -11,6 +11,7 @@ import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
 import { PresentationSubmission } from "./PresentationSubmission";
 import { Session } from "packages/datastore/entities/Session";
+import { findKeyOfJwt } from "@utils/findKeyOfJwt";
 
 export enum RPStatus {
     INIT = 'INITIALIZED',
@@ -144,7 +145,7 @@ export class RP {
             return false;
         }
         else {
-            const skey = await Factory.resolve(jwt.payload!.iss);
+            const skey = await findKeyOfJwt(jwt);
             if (!skey) {
                 this.session.data.result!.messages.push({
                     code: 'INVALID_JWT',
@@ -190,15 +191,9 @@ export class RP {
             return this.session.data.result;
         }
 
-        // we expect an id_token in the response to signal the wallet holder key
-        if (!response.id_token)
+        // we may get an id_token in the response to signal the wallet holder key
+        if (response.id_token)
         {
-            this.session.data.result!.messages.push({
-                code: 'INVALID_RESPONSE',
-                message: 'Missing id_token'
-            });
-        }
-        else {
             if(!await this.parseIDToken(response.id_token)) {
                 this.session.data.result!.messages.push({
                     code: 'INVALID_ID_TOKEN',
@@ -224,7 +219,7 @@ export class RP {
     private async parseVPToken(vptoken:PresentationResult) 
     {
         if (this.dcql || this.presentation?.query) {
-            return await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation.query);
+            return await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
         }
         else {
             return await this.parsePresentation(vptoken as unknown as Presentation);

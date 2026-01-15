@@ -11,6 +11,7 @@ import { sha256 } from '@noble/hashes/sha2'
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
 import { DisclosureFrame, Verifier } from '@sd-jwt/types'
 import { digest, generateSalt } from '@sd-jwt/crypto-nodejs';
+import { findKeyOfJwt } from 'utils/findKeyOfJwt';
 
 export interface MetaData {
     [x:string]: any;
@@ -92,7 +93,7 @@ export class DCQLSubmission
             sdjwt = JWT.fromToken(parts[0]);
         }
         catch {
-            this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': cannot decode SD-JWT'});
+            this.messages.push({code: 'INVALID_JWT', message: this.credentialId + ': cannot decode SD-JWT'});
             return;
         }
 
@@ -106,7 +107,7 @@ export class DCQLSubmission
 
         // validate the SD-JWT
         // the sdjwt.findKey() implementation is the same as in this class, but it resolved to null for some reason...
-        const key = await this.findKey(sdjwt);
+        const key = await findKeyOfJwt(sdjwt);
         if (!key) {
             this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': could not determine signing key of SD-JWT'});
         }
@@ -155,7 +156,7 @@ export class DCQLSubmission
             ec.holder = jwt.payload.cnf.x5c;
         }
 
-        const ckey = await this.findKey(jwt);
+        const ckey = await findKeyOfJwt(jwt);
         const verifier: Verifier = async (data: string, signature:string): Promise<boolean> => {
             return await ckey!.verify(ckey!.algorithms()[0], fromString(signature, 'base64url'), fromString(data, 'utf-8'))
         }
@@ -177,8 +178,16 @@ export class DCQLSubmission
                 case '_sd_hash':
                     break;
                 case 'status':
-                    ec.metadata!.statusLists = [verified.payload.status];
-                    await validateStatusLists(this.rp, ec);
+                    if (verified.payload.status?.status_list) {
+                        ec.metadata!.statusLists = [{type:'status+jwt', ...verified.payload.status.status_list}];
+                        const msgs = await validateStatusLists(this.rp, ec);
+                        if (msgs && msgs.length) {
+                            this.messages = this.messages.concat(msgs);
+                        }            
+                    }
+                    else {
+                        this.messages.push({code:'NO_STATUS_LIST', message:'sd-jwt does not implement a correct status list'});
+                    }
                     break;
                 case 'iat':
                     ec.metadata!.issuedAt = moment(verified.payload.iat! * 1000).toISOString();
@@ -216,7 +225,7 @@ export class DCQLSubmission
             jwt = JWT.fromToken(token);
         }
         catch {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': KB is not a valid JWT'}); 
+            this.messages.push({code: 'INVALID_JWT', message: this.credentialId + ': KB is not a valid JWT'}); 
             return;
         }
 
@@ -245,7 +254,10 @@ export class DCQLSubmission
             else {
                 const isValidSignature = await jwt.verify(holder);
                 if (!isValidSignature) {
-                    this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': could not validate signature of KB with holder key'});
+                    this.messages.push({code: 'JWT_UNVERIFIED', message: this.credentialId + ': could not validate signature of KB with holder key'});
+                }
+                else {
+                    this.messages.push({code: 'JWT_VERIFIED', message: this.credentialId + ': key binding was succesfully verified'});
                 }
             }
         }
@@ -284,46 +296,6 @@ export class DCQLSubmission
             this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': hash over credential does not match credential'});
         }
     }
-
-    async findKey(jwt:JWT): Promise<CryptoKey | null> {
-        let ckey: CryptoKey | null = null;
-        // if there is a kid in the header, see if it can be resolved
-        if (jwt.header?.kid) {
-          const kid = jwt.header.kid.split("#")[0].trim("=");
-          try {
-            ckey = await Factory.resolve(kid);
-          }
-          catch (e) {
-            // pass
-          }
-        }
-    
-        // keys can be defined as a JWK entry
-        if (!ckey && jwt.header?.jwk) {
-          ckey = await Factory.createFromJWK(jwt.header.jwk);
-        }
-    
-        // the iss claim in the header can be a resolvable did
-        if (!ckey && jwt.header?.iss) {
-          try {
-            ckey = await Factory.resolve(jwt.header.iss);
-          }
-          catch (e) {
-            // pass
-          }
-        }
-    
-        // the iss claim may reside in the payload
-        if (!ckey && jwt.payload?.iss) {
-          try {
-            ckey = await Factory.resolve(jwt.payload.iss);
-          }
-          catch (e) {
-            // pass
-          }
-        }
-        return ckey;
-      }
 
     private async validateVCDM()
     {
@@ -440,7 +412,10 @@ export class DCQLSubmission
             else {
                 ec.metadata!.statusLists = [vc.credentialStatus];
             }
-            await validateStatusLists(this.rp, ec);
+            const msgs = await validateStatusLists(this.rp, ec);
+            if (msgs && msgs.length) {
+                this.messages = this.messages.concat(msgs);
+            }
         }
         if (jwt.payload?.status && jwt.payload?.status?.status_list) {
             // if we have IETF Status Token lists, push it as a regular status list type

@@ -1,11 +1,10 @@
 import moment from 'moment';
 import {Bitstring} from '@digitalcredentials/bitstring';
-import { VPResultMessage } from 'verifier/RP';
-import { Message } from 'types';
 import { JWT } from '@muisit/simplejwt';
-import {gzip, ungzip} from 'pako';
-import { inflateSync, deflateSync } from 'zlib';
+import { ungzip } from 'pako';
+import { inflateSync } from 'zlib';
 import { fromString } from 'uint8arrays';
+import { findKeyOfJwt } from '../utils/findKeyOfJwt';
 
 interface CachedList {
     id: string;
@@ -224,7 +223,7 @@ export class StatusList
             throw new Error('STATUSLIST_INVALID:Statuslist did not properly decode from JWT');
         }
 
-        const ckey = await jwt.findKey();
+        const ckey = await findKeyOfJwt(jwt);
         if (!ckey) {
             throw new Error('STATUSLIST_INVALID:Statuslist could not be verified');
         }
