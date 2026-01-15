@@ -382,24 +382,8 @@ The response object is a html form encoded set of key-values:
 ```
 expires_in: '300'
 state: '6c9c611d-ee10-4c9d-9af5-5992ad191019'
-presentation_submission: '{
-  "id":"grAU7C0oHg2oinn1IAcw6",
-  "definition_id":"ABC",
-  "descriptor_map":[{
-    "id":"ABC",
-    "format":"jwt_vp",
-    "path":"$",
-    "path_nested":{
-      "id":"ABC",
-      "format":"jwt_vc",
-      "path":"$.vp.verifiableCredential[0]"
-    }
-  }]
-}'
-vp_token: <JWT>
+vp_token: '["... SD-JWT token..."]'
 ```
-
-The `presentation_submission` indicates where to find the requested fields in the set of Verifiable Credentials transmitted. It is a response to the `constraints` field in the presentation definition above.
 
 The actual Verifiable Credentials are stored in the `vp_token` attribute. The Veramo-Verifier decodes and verifies the JWT and collects all the claims for the front-end-verifier.
 
@@ -407,6 +391,7 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
+|         | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
 |         | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
 |         | 7005e6c | 2025-11-25 | Database sessions, which implies a database migration |
 |         | 086ea5d | 2025-11-25 | Added `/api/version` endpoint that gives package version, node version, tag and commit information |
