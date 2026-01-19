@@ -22,6 +22,7 @@ export interface ExtractedCredential {
     holder?: string;
     claims: MetaData;
     metadata?: MetaData;
+    name?: string;
 }
 
 export class DCQLSubmission

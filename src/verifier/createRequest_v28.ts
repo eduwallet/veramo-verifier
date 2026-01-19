@@ -29,7 +29,7 @@ export function createRequest_v28(rp:RP, dcql:any)
         "nonce": rp.session.data.nonce,
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9.1
         // "The aud Claim MUST equal to the issuer Claim value, when Dynamic Self-Issued OP Discovery is performed."
-        "aud": rp.verifier.clientId(),
+        "aud": 'decentralized_identifier:' + rp.verifier.clientId(),
 
         // AuthorizationRequest attributes
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
