@@ -5,7 +5,7 @@ const debug = Debug('issuer:did');
  */
 
 import { loadJsonFiles } from "#root/utils/loadJsonFiles";
-import { Identifier, Key, PrivateKey } from "#root/packages/datastore/index";
+import { Identifier, Key, PrivateKey } from "#root/database/entities/index";
 import { CryptoKey, Factory } from '@muisit/cryptokey';
 import { getDbConnection } from '#root/database/index';
 import { resolveConfPath } from '@utils/resolveConfPath';

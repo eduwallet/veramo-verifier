@@ -37,7 +37,7 @@ interface StoreRequest {
     did:string;
     admin_token:string;
     metadata?:string;
-    presentations:any;
+    presentations:string;
 }
 
 async function setData(obj:Verifier, name:string, path:string, did:string, admin_token:string, presentations:string, metadata?:string)
@@ -47,13 +47,7 @@ async function setData(obj:Verifier, name:string, path:string, did:string, admin
     obj.did = did;
     obj.admin_token = admin_token;
     obj.metadata = metadata;
-    const presString = JSON.stringify(presentations);
-    if (presString && presString.length) {
-        obj.presentations = presString;
-    }
-    else {
-        obj.presentations = '[]';
-    }
+    obj.presentations = presentations;
 }
 
 export async function storeVerifier(request: Request<StoreRequest>, response: Response) {
@@ -85,7 +79,7 @@ interface CreateRequest {
     did:string;
     admin_token:string;
     metadata?:string;
-    presentations:any;
+    presentations:string;
 }
 export async function createVerifier(request: Request<CreateRequest>, response: Response) {
     try {

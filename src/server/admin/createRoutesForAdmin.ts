@@ -6,6 +6,7 @@ import { createPresentation, deletePresentation, listPresentations, storePresent
 import { createVerifier, deleteVerifier, listVerifiers, storeVerifier } from './verifiers';
 import { adminBearerToken, hasAdminBearerToken } from '@utils/adminBearerToken';
 import { getVersion } from './getVersion';
+import { exportConfig } from './exportConfig';
 
 function bearerAdminForAPI() {
     passport.use('admin-api', new Strategy(
@@ -35,7 +36,11 @@ export async function createRoutesForAdmin(app:Express) {
         () => {
             setTimeout(() => { process.exit(0)}, 2000);
         }
-    )
+    );
+    router.get('/export',
+        passport.authenticate('admin-api', { session: false }),
+        exportConfig
+    );
 
     router.get('/identifiers', 
         passport.authenticate('admin-api', { session: false }),
