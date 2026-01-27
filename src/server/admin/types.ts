@@ -1,7 +1,7 @@
-import { getDbConnection } from "#root/database";
-import { Identifier, Key, Presentation } from "#root/packages/datastore/index";
+import { getDbConnection } from "#root/database/index";
+import { Identifier, Key, Presentation } from "#root/database/entities/index";
 import moment from "moment";
-import { Verifier } from "packages/datastore/entities/Verifier";
+import { Verifier } from "database/entities/Verifier";
 
 export interface DataList {
     offset: number;
@@ -43,7 +43,7 @@ export async function identifierToScheme(id:Identifier) {
         keys: []
     };
 
-    const dbConnection = await getDbConnection();
+    const dbConnection = getDbConnection();
     const keys = dbConnection.getRepository(Key);
     id.keys = await keys.createQueryBuilder('key').relation(Identifier, "keys").of(id).loadMany();
 

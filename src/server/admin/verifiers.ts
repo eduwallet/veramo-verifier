@@ -1,8 +1,8 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database';
-import { Verifier } from "#root/packages/datastore/index";
+import { getDbConnection } from '#root/database/index';
+import { Verifier } from "#root/database/entities/index";
 import { Request, Response } from 'express'
 import { DataList, verifierToScheme } from './types.js';
 
@@ -14,7 +14,7 @@ export async function listVerifiers(request: Request, response: Response) {
             pagesize: 50,
             data: []
         };
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Verifier);
         const objs =  await repo.createQueryBuilder('verifier').orderBy("verifier.name").getMany();
         data.count = objs.length;
@@ -58,7 +58,7 @@ async function setData(obj:Verifier, name:string, path:string, did:string, admin
 
 export async function storeVerifier(request: Request<StoreRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Verifier);
         const obj =  await repo.createQueryBuilder('verifier')
             .where('id=:id', {id: request.body.id})
@@ -89,7 +89,7 @@ interface CreateRequest {
 }
 export async function createVerifier(request: Request<CreateRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Verifier);
         const other =  await repo.createQueryBuilder('verifier')
             .where('path=:path', {path: request.body.path})
@@ -117,7 +117,7 @@ interface DeleteRequest {
 
 export async function deleteVerifier(request: Request<DeleteRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Verifier);
 
         const obj =  await repo.createQueryBuilder('verifier')

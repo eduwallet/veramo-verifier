@@ -1,7 +1,7 @@
 import moment from 'moment';
 import { createUniqueId } from '#root/utils/createUniqueId';
-import { getDbConnection } from '#root/database';
-import { Session } from '#root/packages/datastore/entities/Session';
+import { getDbConnection } from '#root/database/index';
+import { Session } from '#root/database/entities/index';
 import { LessThan } from 'typeorm';
 
 export class SessionStateManager {
@@ -17,13 +17,13 @@ export class SessionStateManager {
             throw Error('No state id supplied');
         }
         
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Session);
         await repo.delete({uuid: id, verifier: this.verifier});
     }
 
     public async get(id:string, callbackIfNotFound?:Function):Promise<Session> {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Session);
         let session = await repo.findOneBy({uuid: id, verifier: this.verifier});
 
@@ -39,7 +39,7 @@ export class SessionStateManager {
 
     public async set(state:Session)
     {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Session);
         state.verifier = this.verifier;
         await repo.save(state);
@@ -57,7 +57,7 @@ export class SessionStateManager {
 
     public async clearAll()
     {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Session);
         await repo.delete({
             expirationDate: LessThan(new Date()),

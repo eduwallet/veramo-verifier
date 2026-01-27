@@ -4,8 +4,8 @@ const debug = Debug('verifier:verifiers');
 import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from '@utils/resolveConfPath';
 import { VerifierOptions, Verifier } from './Verifier';
-import { getDbConnection } from "database";
-import { Verifier as VerifierEntity } from "packages/datastore/entities/Verifier";
+import { getDbConnection } from "#root/database/index";
+import { Verifier as VerifierEntity } from "#root/database/entities/index";
 import { hasAdminBearerToken } from '@utils/adminBearerToken';
 
 interface VerifierStoreType {
@@ -20,7 +20,7 @@ export function getVerifierStore() {
 async function readFromDB()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(VerifierEntity);
         const objs = await repo.createQueryBuilder('verifier').getMany();
         for (const obj of objs) {
@@ -43,7 +43,7 @@ async function readFromDB()
 async function clearDB()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(VerifierEntity);
         await repo.clear();
     } catch (e) {
@@ -54,7 +54,7 @@ async function clearDB()
 async function readFromFile()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(VerifierEntity);
 
         try {

@@ -1,7 +1,5 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm'
 import { migrationGetTableName } from './migration-functions.js'
-import { PrivateKey } from '../entities/PrivateKey.js';
-import { getDbConnection } from '../../../database.js';
 
 export class VerMetadata1768311183222 implements MigrationInterface {
   name = 'VerMetadata1768311183222';

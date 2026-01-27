@@ -3,8 +3,8 @@ const debug = Debug("verifier:presentations");
 
 import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from "@utils/resolveConfPath";
-import { getDbConnection } from "database";
-import { Presentation } from "packages/datastore/entities/Presentation";
+import { getDbConnection } from "#root/database/index";
+import { Presentation } from "database/entities/Presentation";
 import { hasAdminBearerToken } from '@utils/adminBearerToken';
 
 export interface ClaimPresentation {
@@ -52,7 +52,7 @@ export function getPresentationStore() {
 async function readFromDB()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
         const objs = await repo.createQueryBuilder('presentation').getMany();
         for (const obj of objs) {
@@ -92,7 +92,7 @@ async function readFromDB()
 async function clearDB()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
         await repo.clear();
     }
@@ -104,7 +104,7 @@ async function clearDB()
 async function readFromFile()
 {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
     
         try {

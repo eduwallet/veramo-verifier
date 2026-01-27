@@ -1,8 +1,8 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database';
-import { Identifier, Key, PrivateKey } from "#root/packages/datastore/index";
+import { getDbConnection } from '#root/database/index';
+import { Identifier, Key, PrivateKey } from "#root/database/entities/index";
 import { Request, Response } from 'express'
 import { DataList, identifierToScheme } from './types.js';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
@@ -16,7 +16,7 @@ export async function listIdentifiers(request: Request, response: Response) {
             pagesize: 50,
             data: []
         };
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const ids = dbConnection.getRepository(Identifier);
         const identifiers =  await ids.createQueryBuilder('identifier').orderBy("identifier.did").getMany();
         data.count = identifiers.length;
@@ -87,7 +87,7 @@ export async function storeIdentifier(request: Request<StoreIdentifierRequest>, 
         debug("storing identifier", request.body);
         is_valid_provider(request.body.provider);
 
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const ids = dbConnection.getRepository(Identifier);
         const identifier =  await ids.createQueryBuilder('identifier')
             .innerJoinAndSelect("identifier.keys", "key")
@@ -134,7 +134,7 @@ export async function createIdentifier(request: Request<CreateIdentifierRequest>
         is_valid_provider(request.body.provider);
         is_valid_key(request.body.keytype ?? '');
 
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const ids = dbConnection.getRepository(Identifier);
         const other =  await ids.createQueryBuilder('identifier')
             .innerJoinAndSelect("identifier.keys", "key")
@@ -167,7 +167,7 @@ interface DeleteIdentifierRequest {
 
 export async function deleteIdentifier(request: Request<DeleteIdentifierRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const krepo = dbConnection.getRepository(Key);
         const pkeys = dbConnection.getRepository(PrivateKey);
         const ids = dbConnection.getRepository(Identifier);
@@ -205,7 +205,7 @@ async function createNewKey(keytype:string)
 
 async function saveKey(id:Identifier, ckey:CryptoKey)
 {
-    const dbConnection = await getDbConnection();
+    const dbConnection = getDbConnection();
     const dbKey = new Key();
     dbKey.kid = ckey.exportPublicKey();
     dbKey.kms = 'local';

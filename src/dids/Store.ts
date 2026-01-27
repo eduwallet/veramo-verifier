@@ -7,7 +7,7 @@ const debug = Debug('issuer:did');
 import { loadJsonFiles } from "#root/utils/loadJsonFiles";
 import { Identifier, Key, PrivateKey } from "#root/packages/datastore/index";
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from '#root/database';
+import { getDbConnection } from '#root/database/index';
 import { resolveConfPath } from '@utils/resolveConfPath';
 
 export interface DIDStoreValue {
@@ -53,7 +53,7 @@ class DIDConfigurationStore {
 
     public async add(key:string, configuration:DIDConfiguration)
     {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const ids = dbConnection.getRepository(Identifier);
         const result = await ids.createQueryBuilder('identifier')
             .innerJoinAndSelect("identifier.keys", "key")
@@ -74,7 +74,7 @@ class DIDConfigurationStore {
 
     private async initialiseDBKey(result:Identifier): Promise<DIDStoreValue>
     {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const dbKey = result.keys[0];
         const pkeys = dbConnection.getRepository(PrivateKey);
         const pkey = await pkeys.findOneBy({alias:dbKey.kid});
@@ -112,7 +112,7 @@ class DIDConfigurationStore {
         identifier.provider = configuration.provider ?? 'did:jwk';
         identifier.controllerKeyId = ckey.exportPublicKey();
 
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const irepo = dbConnection.getRepository(Identifier);
         await irepo.save(identifier);
 
@@ -144,7 +144,7 @@ class DIDConfigurationStore {
     }
 
     public async keysWithPath() {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const irepo = dbConnection.getRepository(Identifier);
         const keys = await irepo.createQueryBuilder('identifier')
             .where('not identifier.path is NULL')
@@ -157,7 +157,7 @@ class DIDConfigurationStore {
         if (this.configuration[key]) {
             return this.configuration[key];
         }
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const ids = dbConnection.getRepository(Identifier);
         const result = await ids.createQueryBuilder('identifier')
             .innerJoinAndSelect("identifier.keys", "key")

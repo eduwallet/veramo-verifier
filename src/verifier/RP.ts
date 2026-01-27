@@ -13,7 +13,7 @@ import { AuthorizationResponse, Presentation, PresentationResult } from "types/a
 import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
 import { PresentationSubmission } from "./PresentationSubmission";
-import { Session } from "packages/datastore/entities/Session";
+import { Session } from "database/entities/Session";
 import { findKeyOfJwt } from "@utils/findKeyOfJwt";
 
 export enum RPStatus {
