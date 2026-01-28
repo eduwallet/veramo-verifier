@@ -124,7 +124,7 @@ export class PresentationSubmission
         if (!payload?.aud || payload.aud != this.rp.verifier.clientId()) {
             this.messages.push({code: 'INVALID_PRESENTATION', message: 'aud claim does not match client id of verifier', aud:payload.aud, clientId: this.rp.verifier.clientId()});
         }
-        if (!payload?.nonce || payload.nonce != this.rp.nonce) {
+        if (!payload?.nonce || payload.nonce != this.rp.session.data.nonce) {
             this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.nonce});
         }
 
@@ -157,7 +157,9 @@ export class PresentationSubmission
     {
         var ec:ExtractedCredential= {
             holder,
-            issuer: payload?.iss,
+            // get the iss claim, which should be a did/key, or else the issuer.id, or else plain issuer
+            issuer: payload?.iss || ((payload.issuer && payload.issuer.id) ?? payload.issuer),
+            name: payload?.name,
             claims: payload.credentialSubject,
             metadata: {}
         };

@@ -9,7 +9,7 @@ import { SessionStateManager } from '@utils/SessionStateManager';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
 import { Identifier } from 'packages/datastore';
 import { getDIDConfigurationStore } from 'dids/Store';
-import { Session } from 'packages/datastore/entities/Session';
+import { Session } from 'database/entities/Session';
 
 export interface VerifierOptions {
     name:string;

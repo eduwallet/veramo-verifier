@@ -1,8 +1,8 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database';
-import { Presentation} from "#root/packages/datastore/index";
+import { getDbConnection } from '#root/database/index';
+import { Presentation} from "#root/database/entities/index";
 import { Request, Response } from 'express'
 import { DataList, presentationToScheme } from './types.js';
 
@@ -14,7 +14,7 @@ export async function listPresentations(request: Request, response: Response) {
             pagesize: 50,
             data: []
         };
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
         const objs =  await repo.createQueryBuilder('presentation').orderBy("presentation.name").getMany();
         data.count = objs.length;
@@ -60,7 +60,7 @@ async function setData(obj:Presentation, shortname:string, name:string, purpose:
 
 export async function storePresentation(request: Request<StoreRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
         const obj =  await repo.createQueryBuilder('presentation')
             .where('id=:id', {id: request.body.id})
@@ -90,7 +90,7 @@ interface CreateRequest {
 }
 export async function createPresentation(request: Request<CreateRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
         const other =  await repo.createQueryBuilder('presentation')
             .where('shortname=:name', {name: request.body.shortname})
@@ -118,7 +118,7 @@ interface DeleteRequest {
 
 export async function deletePresentation(request: Request<DeleteRequest>, response: Response) {
     try {
-        const dbConnection = await getDbConnection();
+        const dbConnection = getDbConnection();
         const repo = dbConnection.getRepository(Presentation);
 
         const obj =  await repo.createQueryBuilder('presentation')

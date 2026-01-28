@@ -391,8 +391,14 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
+<<<<<<< HEAD
 |  v1.4.0 | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
 |  v1.3.0 | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
+=======
+|         | 0553fef | 2026-01-27 | Export option of configuration using Management API |
+|         | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
+|         | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
+>>>>>>> main
 |         | 7005e6c | 2025-11-25 | Database sessions, which implies a database migration |
 |         | 086ea5d | 2025-11-25 | Added `/api/version` endpoint that gives package version, node version, tag and commit information |
 |         | f30d00f | 2025-11-19 | Clearing tables (verifiers, presentations, but not identifiers and keys) if `BEARER_TOKEN` is empty, enforcing file based configuration on restart of the application |

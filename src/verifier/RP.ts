@@ -1,3 +1,6 @@
+import Debug from 'debug';
+const debug = Debug("verifier:rp");
+
 import { Verifier } from "./Verifier";
 import { v4 } from 'uuid';
 import { DCQLSubmission, ExtractedCredential } from "./DCQLSubmission";
@@ -10,7 +13,7 @@ import { AuthorizationResponse, Presentation, PresentationResult } from "types/a
 import { createRequest_v28 } from "./createRequest_v28";
 import { createRequest_v25 } from "./createRequest_v25";
 import { PresentationSubmission } from "./PresentationSubmission";
-import { Session } from "packages/datastore/entities/Session";
+import { Session } from "database/entities/Session";
 import { findKeyOfJwt } from "@utils/findKeyOfJwt";
 
 export enum RPStatus {
@@ -204,7 +207,31 @@ export class RP {
         }
 
         if (response.vp_token) {
-            await this.parseVPToken(JSON.parse(response.vp_token));
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#section-8.1
+            // vp_token:
+            // REQUIRED. This is a JSON-encoded object containing entries where the key is the id value used for a
+            // Credential Query in the DCQL query and the value is an array of one or more Presentations that match
+            // the respective Credential Query. 
+            let resultObject = null;
+            try {
+                resultObject = JSON.parse(response.vp_token);
+            }
+            catch (e) {
+                debug('Verification response is not a JSON encoded string with tokens', e);
+            }
+            if (!resultObject && typeof(response.vp_token) == 'string') {
+                resultObject = response.vp_token;
+            }
+
+            if (resultObject) {
+                await this.parseVPToken(resultObject);
+            }
+            else {
+                this.session.data.result!.messages.push({
+                    code: 'INVALID_RESPONSE',
+                    message: 'Invalid vp_token'
+                });
+            }
         }
         else {
             this.session.data.result!.messages.push({

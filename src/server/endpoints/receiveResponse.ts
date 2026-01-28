@@ -16,7 +16,7 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 const state = request.params.state;
                 const session = await verifier.sessionManager.get(state!);
                 if (session.data.status != RPStatus.RETRIEVED) {
-                    debug.log('no state for this response');
+                    debug('no state for this response');
                     return sendErrorResponse(response, 404, 'No authorization request could be found');
                 }
 

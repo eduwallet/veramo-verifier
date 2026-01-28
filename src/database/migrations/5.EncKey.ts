@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm'
 import { migrationGetTableName } from './migration-functions.js'
-import { PrivateKey } from '../entities/PrivateKey.js';
-import { getDbConnection } from '../../../database.js';
+import { PrivateKey } from '../entities/index';
+import { getDbConnection } from '../index';
 
 export class EncKey1762521078111 implements MigrationInterface {
   name = 'EncKey1762521078111';
@@ -16,7 +16,7 @@ export class EncKey1762521078111 implements MigrationInterface {
     }
 
     if ((process.env.PASSPHRASE ?? '').length > 0) {
-        const db = await getDbConnection();
+        const db = getDbConnection();
         const repo = db.getRepository(PrivateKey);
         const keys = await repo.createQueryBuilder('private-key').getMany();
         for (const key of keys) {
@@ -29,7 +29,7 @@ export class EncKey1762521078111 implements MigrationInterface {
 
   async down(queryRunner: QueryRunner): Promise<void> {
     if ((process.env.PASSPHRASE ?? '').length > 0) {
-        const db = await getDbConnection();
+        const db = getDbConnection();
         const repo = db.getRepository(PrivateKey);
         const keys = await repo.createQueryBuilder('private-key').getMany();
         for (const key of keys) {
