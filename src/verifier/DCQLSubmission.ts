@@ -361,7 +361,7 @@ export class DCQLSubmission
         }
 
         for (const cred of vp.verifiableCredential) {
-            await this.extractVCDMCredential(cred, jwt.payload?.holder);
+            await this.extractVCDMCredential(cred, vp?.holder);
         }
     }
 
