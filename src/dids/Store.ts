@@ -4,11 +4,11 @@ const debug = Debug('issuer:did');
  * Instantiate context configurations
  */
 
-import { loadJsonFiles } from "#root/utils/loadJsonFiles";
-import { Identifier, Key, PrivateKey } from "#root/database/entities/index";
+import { loadJsonFiles } from "utils/loadJsonFiles";
+import { Identifier, Key, PrivateKey } from "database/entities/index";
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from '#root/database/index';
-import { resolveConfPath } from '@utils/resolveConfPath';
+import { getDbConnection } from 'database/index';
+import { resolveConfPath } from 'utils/resolveConfPath';
 
 export interface DIDStoreValue {
     identifier: Identifier;
@@ -42,12 +42,12 @@ class DIDConfigurationStore {
             debug('Loading DID configurations, path: ' + path);
             const configurations = loadJsonFiles<DIDConfiguration>({ path });
             for (const key of Object.keys(configurations.asObject)) {
-                var cfg = configurations.asObject[key];
+                const cfg = configurations.asObject[key];
                 await this.add(key, cfg);
             }
         }
         catch (e) {
-            debug("Missing path for DIDs");
+            debug("Missing path for DIDs", e);
         }
     }
 
@@ -61,7 +61,7 @@ class DIDConfigurationStore {
             .orWhere('identifier.alias=:alias', {alias: configuration.alias})
             .getOne();
         
-        let value:DIDStoreValue|null = null;
+        let value:DIDStoreValue|null;
         if (!result) {
             value = await this.initialiseKey(configuration);
         }
@@ -173,5 +173,5 @@ class DIDConfigurationStore {
     }
 }
 
-var _didConfigurationStore: DIDConfigurationStore = new DIDConfigurationStore();
+const _didConfigurationStore: DIDConfigurationStore = new DIDConfigurationStore();
 export const getDIDConfigurationStore = (): DIDConfigurationStore => _didConfigurationStore;

@@ -17,7 +17,7 @@ export async function findKeyOfJwt(jwt:JWT): Promise<CryptoKey | null>
       try {
         ckey = await Factory.resolve(kid);
       }
-      catch (e) {
+      catch {
         // pass
       }
     }
@@ -32,7 +32,7 @@ export async function findKeyOfJwt(jwt:JWT): Promise<CryptoKey | null>
       try {
         ckey = await Factory.resolve(jwt.header.iss);
       }
-      catch (e) {
+      catch {
         // pass
       }
     }
@@ -42,7 +42,7 @@ export async function findKeyOfJwt(jwt:JWT): Promise<CryptoKey | null>
       try {
         ckey = await Factory.resolve(jwt.payload.iss);
       }
-      catch (e) {
+      catch {
         // pass
       }
     }

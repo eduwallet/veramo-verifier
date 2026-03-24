@@ -1,4 +1,4 @@
-import { getBuildInfo } from '#root/utils/getBuildInfo';
+import { getBuildInfo } from 'utils/getBuildInfo';
 import { Request, Response } from 'express'
 
 export async function getVersion(request: Request, response: Response) {

@@ -13,7 +13,7 @@ interface CachedList {
     purpose: string;
     retrieved: Date;
     expires: Date;
-    data?: Bitstring;
+    data?: string;
     size:number;
 }
 
@@ -97,7 +97,7 @@ export class StatusList
             url = statusListEntry.url;
         }
 
-        var list:CachedList|null = null;
+        let list:CachedList;
         
         try {
             list = await this.getStatusList(url, type, purpose, size);
@@ -135,7 +135,7 @@ export class StatusList
             throw new Error(`STATUSLIST_INVALID:No message for value ${value}`);
         }
 
-        let retval:StatusCheckResult = {
+        const retval:StatusCheckResult = {
             value: value,
             code: 'CREDENTIAL_OK',
             message: message.message
@@ -179,7 +179,7 @@ export class StatusList
             }]
         }
         else {
-            let retval:StatusMessage[] = [];
+            const retval:StatusMessage[] = [];
             for (let i = 0; i <= (1 << size); i++) {
                 retval.push({
                     status: "0x" + i.toString(16),
@@ -213,14 +213,14 @@ export class StatusList
     private async retrieveList(statusList:string, type:string, purpose:string, size:number)
     {
         const token = await fetch(statusList).then((r) => r.text()).catch((e) => {
-            throw new Error('STATUSLIST_UNREACHABLE:Statuslist could not be retrieved');
+            throw new Error('STATUSLIST_UNREACHABLE:Statuslist could not be retrieved', e);
         });
         let jwt:JWT;
         try {
             jwt = JWT.fromToken(token);
         }
         catch (e:any) {
-            throw new Error('STATUSLIST_INVALID:Statuslist did not properly decode from JWT');
+            throw new Error('STATUSLIST_INVALID:Statuslist did not properly decode from JWT', e);
         }
 
         const ckey = await findKeyOfJwt(jwt);
@@ -234,7 +234,7 @@ export class StatusList
             throw new Error('STATUSLIST_INVALID:Statuslist has no content');
         }
 
-        let entry:CachedList = {
+        const entry:CachedList = {
             id: '',
             url: '',
             purpose: purpose,
@@ -288,7 +288,7 @@ export class StatusList
         this.cachedLists[statusList] = entry;
     }
 
-    private async toBitstring(data:Uint8Array)
+    private async toBitstring(data:Uint8Array): Promise<string>
     {
         const lst = new Bitstring({buffer: data});
         return lst.encodeBits();

@@ -3,7 +3,6 @@ import {
   Column,
   PrimaryGeneratedColumn,
   BaseEntity,
-  Index,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm'
@@ -11,31 +10,31 @@ import {
 @Entity('verifier')
 export class Verifier extends BaseEntity {
     @PrimaryGeneratedColumn('increment')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     id: number;
 
     @Column({ type: 'varchar'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     name: string
 
     @Column({ type: 'varchar'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     path: string
 
     @Column('varchar')
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     did: string
 
     @Column('varchar')
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     admin_token: string
 
     @Column('text')
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     presentations: string
 
     @Column('text')
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     metadata: string
 
     @BeforeInsert()
@@ -50,10 +49,10 @@ export class Verifier extends BaseEntity {
     }
 
     @Column({ type: 'timestamp'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     saveDate: Date
 
     @Column({ type: 'timestamp'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     updateDate: Date
 }

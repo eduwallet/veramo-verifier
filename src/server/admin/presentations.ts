@@ -1,8 +1,8 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database/index';
-import { Presentation} from "#root/database/entities/index";
+import { getDbConnection } from 'database/index';
+import { Presentation} from "database/entities/index";
 import { Request, Response } from 'express'
 import { DataList, presentationToScheme } from './types.js';
 
@@ -48,13 +48,13 @@ async function setData(obj:Presentation, shortname:string, name:string, purpose:
         obj.input_descriptors = input_descriptors;
     }
     else {
-        obj.input_descriptors = null;
+        delete obj.input_descriptors;
     }
     if (query && query !== '' && query.length) {
         obj.query = query;
     }
     else {
-        obj.query = null;
+        delete obj.query;
     }
 }
 

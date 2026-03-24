@@ -1,4 +1,4 @@
-import { StringKeyedObject } from '#root/types/index';
+import { StringKeyedObject } from 'types/index';
 import {
     Entity,
     Column,
@@ -11,23 +11,23 @@ import {
 @Entity('session')
 export class Session extends BaseEntity {
     @PrimaryGeneratedColumn('increment')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     id: number;
     
     @Column('varchar')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     uuid: string
 
     @Column('varchar')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     state: string
 
     @Column('varchar')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     verifier: string
 
     @Column({ type: 'simple-json' })
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     data: StringKeyedObject;
 
     @Column({ type: 'timestamp', nullable: true })
@@ -45,10 +45,10 @@ export class Session extends BaseEntity {
     }
 
     @Column({ type: 'timestamp', select: true })
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     saveDate: Date
 
     @Column({ type: 'timestamp', select: true })
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     updateDate: Date
 }

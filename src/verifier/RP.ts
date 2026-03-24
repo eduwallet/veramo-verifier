@@ -104,6 +104,7 @@ export class RP {
     public clientMetadata() {
         return Object.assign({}, {
             // https://www.rfc-editor.org/rfc/rfc7591.html#section-2
+            // https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata
             "client_name": this.presentation?.name ?? this.verifier.name,
             "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
             "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
@@ -127,7 +128,7 @@ export class RP {
                 return false;
             }
         }
-        catch (e) {
+        catch {
             this.session.data.result!.messages.push({
                 code: 'INVALID_JWT',
                 message: 'Could not decode JWT',

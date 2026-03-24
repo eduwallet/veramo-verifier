@@ -7,9 +7,8 @@ import { getPresentationStore, PresentationDefinition } from "presentations/Pres
 import { StatusList } from "statuslist/StatusList";
 import { SessionStateManager } from '@utils/SessionStateManager';
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { Identifier } from 'packages/datastore';
 import { getDIDConfigurationStore } from 'dids/Store';
-import { Session } from 'database/entities/Session';
+import { Identifier, Session } from 'database/entities';
 
 export interface VerifierOptions {
     name:string;

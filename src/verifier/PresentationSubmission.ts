@@ -48,7 +48,7 @@ export class PresentationSubmission
             try {
                 ckey = await jwt.findKey();
             }
-            catch (e) {
+            catch {
                 ckey = null;
             }
             if (!ckey) {
@@ -72,12 +72,12 @@ export class PresentationSubmission
                 });
             }
         }
-        catch (e) {
+        catch {
             // not a JWT, maybe just base64url encoded JSON
             try {
                 payload = JSON.parse(fromString(token, 'base64url'));
             }
-            catch (e) {
+            catch {
                 this.messages.push({
                     code: 'INVALID_JWT',
                     message: 'Could not decode presentation response',
@@ -125,7 +125,7 @@ export class PresentationSubmission
             this.messages.push({code: 'INVALID_PRESENTATION', message: 'aud claim does not match client id of verifier', aud:payload.aud, clientId: this.rp.verifier.clientId()});
         }
         if (!payload?.nonce || payload.nonce != this.rp.session.data.nonce) {
-            this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.nonce});
+            this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.session.data.nonce});
         }
 
         const now:number = Math.floor(Date.now() / 1000);
@@ -155,7 +155,7 @@ export class PresentationSubmission
 
     private async parseVCDMCredential(payload:any, holder?:string)
     {
-        var ec:ExtractedCredential= {
+        const ec:ExtractedCredential= {
             holder,
             // get the iss claim, which should be a did/key, or else the issuer.id, or else plain issuer
             issuer: payload?.iss || ((payload.issuer && payload.issuer.id) ?? payload.issuer),
@@ -199,7 +199,7 @@ export class PresentationSubmission
         this.credentials.push(ec);
     }
 
-    private async parseSDCredential(payload:any, token:string, holder?:string)
+    private async parseSDCredential(_payload:any, _token:string, _holder?:string)
     {
         // TODO: Support SD-JWT
     }

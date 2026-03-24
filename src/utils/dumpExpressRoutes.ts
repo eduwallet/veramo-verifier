@@ -20,7 +20,7 @@ function split (thing:any) {
       return ''
     }
     else if(thing) {
-        var match = thing.toString()
+        const match = thing.toString()
             .replace('\\/?', '')
             .replace('(?=\\/|$)', '$')
             .match(/^\/\^((?:\\[.*+?^${}()|[\]\\\/]|[^.*+?^${}()|[\]\\\/])*)\$\//)

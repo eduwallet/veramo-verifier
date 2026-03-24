@@ -1,17 +1,17 @@
 import Debug from 'debug';
 const debug = Debug('verifier:verifiers');
 
-import { loadJsonFiles } from "@utils/loadJsonFiles";
-import { resolveConfPath } from '@utils/resolveConfPath';
+import { loadJsonFiles } from "utils/loadJsonFiles";
+import { resolveConfPath } from 'utils/resolveConfPath';
 import { VerifierOptions, Verifier } from './Verifier';
-import { getDbConnection } from "#root/database/index";
-import { Verifier as VerifierEntity } from "#root/database/entities/index";
-import { hasAdminBearerToken } from '@utils/adminBearerToken';
+import { getDbConnection } from "database/index";
+import { Verifier as VerifierEntity } from "database/entities/index";
+import { hasAdminBearerToken } from 'utils/adminBearerToken';
 
 interface VerifierStoreType {
     [x:string]: Verifier;
 }
-var VerifierStore:VerifierStoreType = {};
+const VerifierStore:VerifierStoreType = {};
 
 export function getVerifierStore() {
     return VerifierStore;
@@ -76,7 +76,7 @@ async function readFromFile()
             }
         }
         catch (e) {
-            debug("Missing conf path for verifiers");
+            debug("Missing conf path for verifiers", e);
         }
     } catch (e) {
         console.error("Caught exception on verifier initialisation", e);
