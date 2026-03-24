@@ -1,5 +1,5 @@
-import { getDbConnection } from "#root/database/index";
-import { Identifier, Key, Presentation } from "#root/database/entities/index";
+import { getDbConnection } from "database/index";
+import { Identifier, Key, Presentation } from "database/entities/index";
 import moment from "moment";
 import { Verifier } from "database/entities/Verifier";
 
@@ -76,7 +76,7 @@ export async function presentationToScheme(data:Presentation)
         id: data.id,
         shortname: data.shortname,
         name: data.name,
-        purpose: data.path,
+        purpose: data.purpose,
         input_descriptors: data.input_descriptors,
         query: data.query,
         saved: moment(data.saveDate).format('YYYY-MM-DD HH:mm:ss'),

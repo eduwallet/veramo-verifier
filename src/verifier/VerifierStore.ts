@@ -1,12 +1,12 @@
 import Debug from 'debug';
 const debug = Debug('verifier:verifiers');
 
-import { loadJsonFiles } from "@utils/loadJsonFiles";
-import { resolveConfPath } from '@utils/resolveConfPath';
+import { loadJsonFiles } from "utils/loadJsonFiles";
+import { resolveConfPath } from 'utils/resolveConfPath';
 import { VerifierOptions, Verifier } from './Verifier';
-import { getDbConnection } from "#root/database/index";
-import { Verifier as VerifierEntity } from "#root/database/entities/index";
-import { hasAdminBearerToken } from '@utils/adminBearerToken';
+import { getDbConnection } from "database/index";
+import { Verifier as VerifierEntity } from "database/entities/index";
+import { hasAdminBearerToken } from 'utils/adminBearerToken';
 
 interface VerifierStoreType {
     [x:string]: Verifier;

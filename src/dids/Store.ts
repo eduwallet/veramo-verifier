@@ -4,11 +4,11 @@ const debug = Debug('issuer:did');
  * Instantiate context configurations
  */
 
-import { loadJsonFiles } from "#root/utils/loadJsonFiles";
-import { Identifier, Key, PrivateKey } from "#root/database/entities/index";
+import { loadJsonFiles } from "utils/loadJsonFiles";
+import { Identifier, Key, PrivateKey } from "database/entities/index";
 import { CryptoKey, Factory } from '@muisit/cryptokey';
-import { getDbConnection } from '#root/database/index';
-import { resolveConfPath } from '@utils/resolveConfPath';
+import { getDbConnection } from 'database/index';
+import { resolveConfPath } from 'utils/resolveConfPath';
 
 export interface DIDStoreValue {
     identifier: Identifier;

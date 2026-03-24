@@ -8,7 +8,7 @@ const debug = Debug('server:presentationdef');
 export function getPresentationDef(verifier:Verifier, path:string) {
     verifier.router!.get(path, async (req: Request, response) => {
         debug("getting presentation definition", verifier.name, req.params);
-        const presentation = verifier.getPresentation(req.params.presentationid);
+        const presentation = verifier.getPresentation(req.params.presentationid as string);
         if (!presentation) {
             return sendErrorResponse(response, 404, 'No such presentation for ' + req.params.presentationid);
         }

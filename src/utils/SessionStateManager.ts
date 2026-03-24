@@ -1,7 +1,7 @@
 import moment from 'moment';
-import { createUniqueId } from '#root/utils/createUniqueId';
-import { getDbConnection } from '#root/database/index';
-import { Session } from '#root/database/entities/index';
+import { createUniqueId } from 'utils/createUniqueId';
+import { getDbConnection } from 'database/index';
+import { Session } from 'database/entities/index';
 import { LessThan } from 'typeorm';
 
 export class SessionStateManager {

@@ -1,8 +1,8 @@
 import Debug from 'debug';
 const debug = Debug('server:api');
 
-import { getDbConnection } from '#root/database/index';
-import { Verifier } from "#root/database/entities/index";
+import { getDbConnection } from 'database/index';
+import { Verifier } from "database/entities/index";
 import { Request, Response } from 'express'
 import { DataList, verifierToScheme } from './types.js';
 
@@ -46,7 +46,7 @@ async function setData(obj:Verifier, name:string, path:string, did:string, admin
     obj.name = name;
     obj.did = did;
     obj.admin_token = admin_token;
-    obj.metadata = metadata;
+    obj.metadata = metadata ?? '';
     obj.presentations = presentations;
 }
 

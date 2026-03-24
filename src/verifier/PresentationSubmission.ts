@@ -125,7 +125,7 @@ export class PresentationSubmission
             this.messages.push({code: 'INVALID_PRESENTATION', message: 'aud claim does not match client id of verifier', aud:payload.aud, clientId: this.rp.verifier.clientId()});
         }
         if (!payload?.nonce || payload.nonce != this.rp.session.data.nonce) {
-            this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.nonce});
+            this.messages.push({code: 'INVALID_PRESENTATION', message: 'nonce claim does not match session nonce', nonce:payload.nonce, expected:this.rp.session.data.nonce});
         }
 
         const now:number = Math.floor(Date.now() / 1000);

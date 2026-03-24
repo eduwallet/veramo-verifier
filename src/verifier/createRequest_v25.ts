@@ -10,8 +10,8 @@ import { getBaseUrl } from "@utils/getBaseUrl";
 export function createRequest_v25(rp:RP)
 {
     debug('Creating v25 authorization request using input descriptor/PEX')   ;
-    const presentation_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(get_presentation_path, {presentationid: rp.presentation.id});
-    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation.id, state:rp.session.uuid});
+    const presentation_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(get_presentation_path, {presentationid: rp.presentation!.id});
+    const response_uri = getBaseUrl() + '/' + rp.verifier.name + replaceParamsInUrl(response_path, {presentationid: rp.presentation!.id, state:rp.session.uuid});
     return {
         // basic RequestObject attributes
         "scope": "openid",

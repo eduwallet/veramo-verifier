@@ -1,7 +1,7 @@
-import { getDbConnection } from '#root/database/index';
-import { Verifier, Identifier, Presentation } from '#root/database/entities/index';
-import { sendErrorResponse } from '#root/server/sendErrorResponse'
-import { ArchiveFile, exportConfigAsZip } from '#root/utils/exportConfigAsZip';
+import { getDbConnection } from 'database/index';
+import { Verifier, Identifier, Presentation } from 'database/entities/index';
+import { sendErrorResponse } from 'server/sendErrorResponse'
+import { ArchiveFile, exportConfigAsZip } from 'utils/exportConfigAsZip';
 import { Request, Response } from 'express'
 
 export async function exportConfig(request: Request, response: Response) {

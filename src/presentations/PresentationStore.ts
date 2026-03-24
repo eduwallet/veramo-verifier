@@ -3,7 +3,7 @@ const debug = Debug("verifier:presentations");
 
 import { loadJsonFiles } from "@utils/loadJsonFiles";
 import { resolveConfPath } from "@utils/resolveConfPath";
-import { getDbConnection } from "#root/database/index";
+import { getDbConnection } from "database/index";
 import { Presentation } from "database/entities/Presentation";
 import { hasAdminBearerToken } from '@utils/adminBearerToken';
 

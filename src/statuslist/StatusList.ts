@@ -13,7 +13,7 @@ interface CachedList {
     purpose: string;
     retrieved: Date;
     expires: Date;
-    data?: Bitstring;
+    data?: string;
     size:number;
 }
 
@@ -288,7 +288,7 @@ export class StatusList
         this.cachedLists[statusList] = entry;
     }
 
-    private async toBitstring(data:Uint8Array)
+    private async toBitstring(data:Uint8Array): Promise<string>
     {
         const lst = new Bitstring({buffer: data});
         return lst.encodeBits();

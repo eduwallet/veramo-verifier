@@ -1,4 +1,4 @@
-import { StringKeyedObject } from '#root/types/index';
+import { StringKeyedObject } from 'types/index';
 import {
     Entity,
     Column,

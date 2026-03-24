@@ -13,7 +13,7 @@ export function getOffer(verifier: Verifier, offerPath: string) {
             try {
                 debug("receiving request for offer");
                 const state = request.params.state;
-                const session = await verifier.sessionManager.get(state);
+                const session = await verifier.sessionManager.get(state as string);
 
                 if (!session.data.authorizationRequest) {
                     throw new Error("No authorization request for session");
@@ -29,7 +29,7 @@ export function getOffer(verifier: Verifier, offerPath: string) {
                 // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#section-5.10.1
                 // "The Request URI response MUST be an HTTP response with the content type application/oauth-authz-req+jwt"
                 const rp = await verifier.getRPForSession(session);
-                const token = await rp.toJWT(session.data.authorizationRequest, 'oauth-authz-req+jwt', request.params.wallet_nonce);
+                const token = await rp.toJWT(session.data.authorizationRequest, 'oauth-authz-req+jwt', request.params.wallet_nonce as string);
                 session.data.status = RPStatus.RETRIEVED;
                 await verifier.sessionManager.set(session);
                 response.statusCode = 200

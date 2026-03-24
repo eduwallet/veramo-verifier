@@ -28,6 +28,7 @@
     "printWidth": 150
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/debug": "^4.1.12",
     "@types/pako": "^2.0.3",
     "tsx": "^4.16.2"
@@ -43,6 +44,7 @@
     "@sd-jwt/crypto-nodejs": "^0.18.0",
     "@sd-jwt/sd-jwt-vc": "^0.18.0",
     "@types/archiver": "^7.0.0",
+    "@types/morgan": "^1.9.10",
     "@types/node": "^24.0.14",
     "@types/passport": "^1.0.16",
     "@types/passport-http-bearer": "^1.0.41",
