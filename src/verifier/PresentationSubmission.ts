@@ -199,7 +199,7 @@ export class PresentationSubmission
         this.credentials.push(ec);
     }
 
-    private async parseSDCredential(/*payload:any, token:string, holder?:string*/)
+    private async parseSDCredential(_payload:any, _token:string, _holder?:string)
     {
         // TODO: Support SD-JWT
     }
