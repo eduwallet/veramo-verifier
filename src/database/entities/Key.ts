@@ -4,19 +4,19 @@ import { Identifier } from './Identifier.js'
 @Entity('key')
 export class Key extends BaseEntity {
   @PrimaryColumn('varchar')
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   kid: string
 
   @Column('varchar')
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   kms: string
 
   @Column('varchar')
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   type: string
 
   @Column('varchar')
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   publicKeyHex: string
 
   @Column({

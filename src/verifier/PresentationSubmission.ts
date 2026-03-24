@@ -48,7 +48,7 @@ export class PresentationSubmission
             try {
                 ckey = await jwt.findKey();
             }
-            catch (e) {
+            catch {
                 ckey = null;
             }
             if (!ckey) {
@@ -72,12 +72,12 @@ export class PresentationSubmission
                 });
             }
         }
-        catch (e) {
+        catch {
             // not a JWT, maybe just base64url encoded JSON
             try {
                 payload = JSON.parse(fromString(token, 'base64url'));
             }
-            catch (e) {
+            catch {
                 this.messages.push({
                     code: 'INVALID_JWT',
                     message: 'Could not decode presentation response',
@@ -155,7 +155,7 @@ export class PresentationSubmission
 
     private async parseVCDMCredential(payload:any, holder?:string)
     {
-        var ec:ExtractedCredential= {
+        const ec:ExtractedCredential= {
             holder,
             // get the iss claim, which should be a did/key, or else the issuer.id, or else plain issuer
             issuer: payload?.iss || ((payload.issuer && payload.issuer.id) ?? payload.issuer),
@@ -199,7 +199,7 @@ export class PresentationSubmission
         this.credentials.push(ec);
     }
 
-    private async parseSDCredential(payload:any, token:string, holder?:string)
+    private async parseSDCredential(/*payload:any, token:string, holder?:string*/)
     {
         // TODO: Support SD-JWT
     }

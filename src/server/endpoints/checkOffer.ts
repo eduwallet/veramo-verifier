@@ -20,6 +20,7 @@ export function checkOffer(verifier: Verifier, checkPath: string) {
         passport.authenticate(verifier.name + '-admin', { session: false }),
         async (request: Request, response: Response<CheckOfferResponse>) => {
         try {
+            debug("creating offer using", request.params);
             const session = await verifier.sessionManager.get(request.params.state as string);
             const responseObject:CheckOfferResponse = {
                 status: session.data.status,

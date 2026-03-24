@@ -1,15 +1,15 @@
 import { DCQL, Message } from 'types';
 import moment from 'moment';
 import { RP } from './RP';
-import { Presentation, PresentationResult } from 'types/authresponse';
-import { CredentialPresentation, PresentationDefinition } from 'presentations/PresentationStore';
+import { Presentation } from 'types/authresponse';
+import { CredentialPresentation } from 'presentations/PresentationStore';
 import { JWT } from '@muisit/simplejwt';
-import { Factory, CryptoKey } from '@muisit/cryptokey';
+import { Factory } from '@muisit/cryptokey';
 import { validateStatusLists } from './validateStatusLists';
 import { fromString, toString } from "uint8arrays";
 import { sha256 } from '@noble/hashes/sha2'
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
-import { DisclosureFrame, Verifier } from '@sd-jwt/types'
+import { Verifier } from '@sd-jwt/types'
 import { digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 import { findKeyOfJwt } from 'utils/findKeyOfJwt';
 
@@ -58,14 +58,14 @@ export class DCQLSubmission
                     await this.validateSDJwt();
             }
         }
-        catch (e) {
+        catch {
             this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': caught error validating ' + this.definition.format + ' response'});
         }
     }
 
     private async validateSDJwt()
     {
-        var tokens = this.presentation as string[];
+        let tokens = this.presentation as string[];
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.3.6
         // presentationresult should be an array of string tokens
         if (!Array.isArray(tokens)) {
@@ -140,7 +140,7 @@ export class DCQLSubmission
 
     private async extractSDJwtCredential(jwt:JWT, token:string)
     {
-        var ec:ExtractedCredential= {
+        const ec:ExtractedCredential= {
             issuer: jwt.payload?.iss,
             claims: {},
             metadata: {}
@@ -300,7 +300,7 @@ export class DCQLSubmission
 
     private async validateVCDM()
     {
-        var tokens = this.presentation as string[];
+        let tokens = this.presentation as string[];
         // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.1.3.1.5
         // presentationresult should be an array of string tokens
         if (!Array.isArray(tokens)) {
@@ -376,7 +376,7 @@ export class DCQLSubmission
     private async extractVCDMCredential(token:string, holder?:string)
     {
         const jwt = JWT.fromToken(token);
-        var ec:ExtractedCredential= {
+        const ec:ExtractedCredential= {
             holder,
             issuer: jwt.payload?.iss,
             claims: {},

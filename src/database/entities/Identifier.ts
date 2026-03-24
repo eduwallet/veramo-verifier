@@ -14,23 +14,19 @@ import { Key } from './Key'
 @Index(['alias', 'provider'], { unique: true })
 export class Identifier extends BaseEntity {
   @PrimaryColumn('varchar')
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   did: string
 
   @Column({ type: 'varchar', nullable: true })
-  // @ts-ignore
   provider?: string
 
   @Column({ type: 'varchar', nullable: true })
-  // @ts-ignore
   alias?: string
 
   @Column({ type: 'varchar', nullable: true })
-  // @ts-ignore
   path?: string
 
   @Column({ type: 'text', nullable: true })
-  // @ts-ignore
   services?: string
 
   @BeforeInsert()
@@ -45,18 +41,17 @@ export class Identifier extends BaseEntity {
   }
 
   @Column({ type: 'timestamp', select: true })
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   saveDate: Date
 
   @Column({ type: 'timestamp', select: true })
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   updateDate: Date
 
   @Column({ type: 'varchar', nullable: true })
-  // @ts-ignore
   controllerKeyId?: string
 
   @OneToMany(() => Key, (key:Key) => key.identifier, { cascade: true })
-  // @ts-ignore
+  //@ts-expect-error has no initializer
   keys: Key[]
 }

@@ -3,7 +3,6 @@ const debug = Debug(`verifier:server`)
 
 import express from 'express';
 import morgan from 'morgan'
-import bodyParser from 'body-parser'
 import cors from 'cors'
 
 import { getVerifierStore } from 'verifier/VerifierStore';
@@ -16,7 +15,6 @@ import { getDidWebSpec } from './endpoints/getDidSpec';
 
 const PORT = process.env.PORT ? Number.parseInt(process.env.PORT) : 5000
 const LISTEN_ADDRESS = process.env.LISTEN_ADDRESS ?? '0.0.0.0'
-const BASEURL = process.env.BASEURL ?? 'https://verifier.dev.eduwallet.nl'
 
 export async function initialiseServer() {
     const app = express();

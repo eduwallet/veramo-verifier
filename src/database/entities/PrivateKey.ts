@@ -6,19 +6,19 @@ import crypto from 'crypto';
 @Entity('private-key')
 export class PrivateKey extends BaseEntity {
   @PrimaryColumn('varchar')
-    // @ts-ignore
+  //@ts-expect-error has no initializer
   alias: string
 
   @Column('varchar')
-    // @ts-ignore
+  //@ts-expect-error has no initializer
   type: string
 
   @Column('varchar')
-    // @ts-ignore
+  //@ts-expect-error has no initializer
   privateKeyHex: string
 
   @Column('varchar')
-    // @ts-ignore
+  //@ts-expect-error has no initializer
   seed: string
 
   async decodeKey():Promise<string> {
@@ -41,5 +41,4 @@ export class PrivateKey extends BaseEntity {
   setSeed() {
     this.seed = crypto.randomBytes(32).toString('hex');
   }
-
 }

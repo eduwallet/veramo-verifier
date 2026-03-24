@@ -3,7 +3,6 @@ import {
   Column,
   PrimaryGeneratedColumn,
   BaseEntity,
-  Index,
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm'
@@ -11,27 +10,25 @@ import {
 @Entity('presentation')
 export class Presentation extends BaseEntity {
     @PrimaryGeneratedColumn('increment')
-    //@ts-ignore
+    //@ts-expect-error has no initializer
     id: number;
 
     @Column({ type: 'varchar'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     shortname: string
 
     @Column({ type: 'varchar'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     name: string
 
     @Column('varchar')
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     purpose: string
 
     @Column('text')
-    // @ts-ignore
     input_descriptors?: string
 
     @Column('text')
-    // @ts-ignore
     query?: string
 
     @BeforeInsert()
@@ -46,10 +43,10 @@ export class Presentation extends BaseEntity {
     }
 
     @Column({ type: 'timestamp'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     saveDate: Date
 
     @Column({ type: 'timestamp'})
-    // @ts-ignore
+    //@ts-expect-error has no initializer
     updateDate: Date
 }

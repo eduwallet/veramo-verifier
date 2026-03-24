@@ -128,7 +128,7 @@ export class RP {
                 return false;
             }
         }
-        catch (e) {
+        catch {
             this.session.data.result!.messages.push({
                 code: 'INVALID_JWT',
                 message: 'Could not decode JWT',

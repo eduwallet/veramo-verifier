@@ -6,7 +6,7 @@ export async function validateStatusLists(rp:RP, credential:ExtractedCredential)
 {
     const messages:Message[] = [];
     if (credential.metadata?.statusLists && credential.metadata?.statusLists.length) {
-        for (const statusList of credential.metadata?.statusLists) {
+        for (const statusList of (credential.metadata?.statusLists ?? [])) {
             try {
                 const { code, value, message } = await rp.verifier.statusList.check(statusList);
                 switch (code ?? 'UNRESOLVED') {

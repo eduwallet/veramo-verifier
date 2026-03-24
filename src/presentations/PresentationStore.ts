@@ -43,7 +43,7 @@ interface StoreType {
     [x:string]: PresentationDefinition;
 }
 
-var _store:StoreType = {};
+const _store:StoreType = {};
 
 export function getPresentationStore() {
     return _store;
@@ -68,7 +68,7 @@ async function readFromDB()
                     cfg.input_descriptors = JSON.parse(cfg.input_descriptors);
                 }
             }
-            catch (e) {
+            catch {
                 cfg.input_descriptors = null;
             }
             try {
@@ -76,7 +76,7 @@ async function readFromDB()
                     cfg.query = JSON.parse(cfg.query);
                 }
             }
-            catch (e) {
+            catch {
                 cfg.query = null;
             }
             if (cfg.input_descriptors || cfg.query) {
@@ -128,7 +128,7 @@ async function readFromFile()
             }
         }
         catch (e) {
-            debug("Missing presentation conf path");
+            debug("Missing presentation conf path", e);
         }
     }
     catch (e) {

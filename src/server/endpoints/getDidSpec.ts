@@ -8,8 +8,8 @@ import { Verifier } from 'verifier/Verifier';
 const debug = Debug('server:didspec');
 
 export function getDidSpec(verifier:Verifier) {
-    var path = '/.well-known/did.json';
-    var idparts = verifier.did.split(':');
+    let path = '/.well-known/did.json';
+    const idparts = verifier.did.split(':');
     if (idparts.length > 3) {
         // the did contains a subpath.
         // This is a setup we use in development, where we want to retrieve the did directly from the agent

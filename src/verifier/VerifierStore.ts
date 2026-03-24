@@ -11,7 +11,7 @@ import { hasAdminBearerToken } from 'utils/adminBearerToken';
 interface VerifierStoreType {
     [x:string]: Verifier;
 }
-var VerifierStore:VerifierStoreType = {};
+const VerifierStore:VerifierStoreType = {};
 
 export function getVerifierStore() {
     return VerifierStore;
@@ -76,7 +76,7 @@ async function readFromFile()
             }
         }
         catch (e) {
-            debug("Missing conf path for verifiers");
+            debug("Missing conf path for verifiers", e);
         }
     } catch (e) {
         console.error("Caught exception on verifier initialisation", e);
