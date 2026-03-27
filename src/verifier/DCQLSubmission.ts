@@ -1,3 +1,6 @@
+import Debug from 'debug';
+const debug = Debug("verifier:dcqlsubmission");
+
 import { DCQL, Message } from 'types';
 import moment from 'moment';
 import { RP } from './RP';
@@ -188,6 +191,14 @@ export class DCQLSubmission
                     }
                     else {
                         this.messages.push({code:'NO_STATUS_LIST', message:'sd-jwt does not implement a correct status list'});
+                    }
+                    break;
+                case 'fed':
+                    if (typeof(verified.payload.fed) !== 'string') {
+                        this.messages.push({code:'OIDFED_CLAIM_INVALID', message:'sd-jwt contains an invalid fed: claim'});
+                    }
+                    else {
+                        await this.handleOIDFed(verified.payload.fed as string);
                     }
                     break;
                 case 'iat':
@@ -438,5 +449,19 @@ export class DCQLSubmission
 
         this.credentials.push(ec);
         return ec;
+    }
+
+    private async handleOIDFed(entity:string)
+    {
+        const url = process.env.OIDFED_TA + '/resolve?sub=' + entity;
+        try {
+            const result = await fetch(url).then((r) => r.json());
+            debug("oidfed resolution result is ", result);
+            this.messages.push({code: 'OIDFED_OK', message: 'credential fed successfully resolved against the TA'});
+        }
+        catch (e) {
+            debug("Caught error while resolving trust chain for ", entity, url);
+            this.messages.push({code: 'INVALID_OIDFED', message: 'credential fed claim cannot be resolved ' + entity});
+        }
     }
 }
