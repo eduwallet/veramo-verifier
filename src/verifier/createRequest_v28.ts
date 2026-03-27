@@ -33,7 +33,7 @@ export function createRequest_v28(rp:RP, dcql:any)
 
         // AuthorizationRequest attributes
         // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-9
-        "client_metadata": rp.clientMetadata(),
+        "client_metadata": rp.verifier.getMetadata(),
         "id_token_type": "attester_signed_id_token subject_signed_id_token",
         "dcql_query": dcql,
         ...(rp.presentation?.purpose && {"purpose": rp.presentation!.purpose})

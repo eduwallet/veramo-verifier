@@ -5,6 +5,7 @@ import { getBasePath } from '@utils/getBasePath';
 import { getBaseUrl } from '@utils/getBaseUrl';
 import { checkOffer, checkStatus, createOffer, getDidSpec, getOffer, getPresentationDef, receiveResponse } from './endpoints';
 import { createDcqlOffer } from './endpoints/createDcqlOffer';
+import { getOIDFed } from './endpoints/getOIDFed';
 
 const debug = Debug(`verifier:server`)
 
@@ -45,5 +46,6 @@ export async function createRoutesForVerifier(verifier:Verifier, app:Express) {
     checkStatus(verifier, check_status_path);
     getDidSpec(verifier);
     getPresentationDef(verifier, get_presentation_path);
+    getOIDFed(verifier);
 }
 
