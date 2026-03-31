@@ -149,7 +149,6 @@ export class DCQLSubmission
     {
         const ec:ExtractedCredential= {
             type: this.definition.format,
-            id: this.definition.id,
             issuer: jwt.payload?.iss,
             claims: {},
             metadata: {}
@@ -395,7 +394,6 @@ export class DCQLSubmission
         const jwt = JWT.fromToken(token);
         const ec:ExtractedCredential= {
             type: this.definition.format,
-            id: this.definition.id,
             ...(holder && {holder}),
             issuer: jwt.payload?.iss,
             claims: {},
@@ -538,19 +536,19 @@ export class DCQLSubmission
 
     private async handleOIDFedIssuerPayload(payload:any, ec:ExtractedCredential)
     {
-        let retval = true;
+        let retval = false;
 
         // check that the key used to sign the credential is actually in the metadata vc_issuer list
         if (ec.issuer) {
             const skey = await Factory.resolve(ec.issuer!);
             if (!skey) {
                 this.messages.push({code: 'OIDFED_ERROR', message: `could not resolve credential signing key, failed to match OIDFed metadata`});
-                retval = false;
+                retval = true;
             }
             else {
                 if (!payload.metadata?.vc_issuer?.jwks) {
                     this.messages.push({code: 'OIDFED_ERROR', message: `TA metadata does not contain issuer signing keys`});
-                    retval = false;
+                    retval = true;
                 }
                 else {
                     let keyMatched = false;
@@ -570,42 +568,38 @@ export class DCQLSubmission
 
                     if (!keyMatched) {
                         this.messages.push({code: 'OIDFED_ERROR', message: `Issuer signing key not found in TA metadata`});
-                        retval = false;
+                        retval = true;
                     }
                 }
             }
         }
         else {
             this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer could not be matched with credential signing key due to absent issuer statement`});
-            retval = false;
+            retval = true;
         }
 
         // check if the credential is present in the TA metadata credential list
         if (payload.metadata?.openid_credential_issuer?.credential_configurations_supported) {
             const ccs = payload.metadata?.openid_credential_issuer?.credential_configurations_supported;
-            if (!ec.id || !ccs || !ccs[ec.id!]) {
-                this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not support this credential`});
-                retval = false;
-            }
-            else if(ec.id && ccs && ccs[ec.id]) {
-                if (ccs[ec.id].format !== ec.type) {
-                    this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does issue this credential in this format`, format: ec.type, issuer: ccs[ec.id].format});
-                    retval = false;
-                }
-                // credential configuration is present. There is no use case to check the vct for example, because the version
-                // may have changed in between.
-                if (ec.type == 'dc+sd-jwt') {
-                    if (!ccs[ec.id].vct) {
-                        this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not publish a vct claim for dc+sd-jwt credentials`});
-                        retval = false;
+            let credIdFound = false;
+            for (const credid of Object.keys(ccs ?? {})) {
+                const ccf = ccs[credid];
+
+                if (ccf.format == ec.type) {
+                    if (ec.type == 'dc+sd-jwt' && ccf.vct == ec.claims.vct) {
+                        credIdFound = true;
                     }
                 }
-                // TODO: check jwct_vc_json and vc-jwt requirements in the metadata
+            }
+
+            if (!credIdFound) {
+                this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not support this credential`});
+                retval = true;
             }
         }
         else {
             this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not support this credential`});
-            retval = false;
+            retval = true;
         }
 
         return retval;
