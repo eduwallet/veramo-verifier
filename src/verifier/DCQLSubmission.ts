@@ -21,6 +21,8 @@ export interface MetaData {
 }
 
 export interface ExtractedCredential {
+    type?:string;
+    id?:string;
     issuer?:string|undefined;
     holder?: string;
     claims: MetaData;
@@ -52,6 +54,8 @@ export class DCQLSubmission
     public async validate()
     {
         try {
+            debug("presentation is ", this.presentation);
+            debug("definitions is ", this.definition);
             switch (this.definition.format) {
                 default:
                 case 'jwt_vc_json':
@@ -144,6 +148,8 @@ export class DCQLSubmission
     private async extractSDJwtCredential(jwt:JWT, token:string)
     {
         const ec:ExtractedCredential= {
+            type: this.definition.format,
+            id: this.definition.id,
             issuer: jwt.payload?.iss,
             claims: {},
             metadata: {}
@@ -195,10 +201,10 @@ export class DCQLSubmission
                     break;
                 case 'fed':
                     if (typeof(verified.payload.fed) !== 'string') {
-                        this.messages.push({code:'OIDFED_CLAIM_INVALID', message:'sd-jwt contains an invalid fed: claim'});
+                        this.messages.push({code:'OIDFED_ERROR', message:'sd-jwt contains an invalid fed: claim'});
                     }
                     else {
-                        await this.handleOIDFed(verified.payload.fed as string);
+                        await this.handleOIDFed(verified.payload.fed as string, ec);
                     }
                     break;
                 case 'iat':
@@ -388,7 +394,9 @@ export class DCQLSubmission
     {
         const jwt = JWT.fromToken(token);
         const ec:ExtractedCredential= {
-            holder,
+            type: this.definition.format,
+            id: this.definition.id,
+            ...(holder && {holder}),
             issuer: jwt.payload?.iss,
             claims: {},
             metadata: {}
@@ -446,22 +454,160 @@ export class DCQLSubmission
                 ec.metadata!.evidence = [vc.evidence];
             }
         }
+        if (vc.termsOfUse) {
+            if (Array.isArray(vc.termsOfUse)) {
+                ec.metadata!.termsOfUse = vc.termsOfUse;
+            }
+            else {
+                ec.metadata!.termsOfUse = [vc.termsOfUse];
+            }
+            for (const tou of ec.metadata!.termsOfUse) {
+                if (tou.type == 'OpenIDFederation' && tou.policyId) {
+                    await this.handleOIDFed(tou.policyId, ec);
+                }
+            }
+        }
 
         this.credentials.push(ec);
         return ec;
     }
 
-    private async handleOIDFed(entity:string)
+    private async handleOIDFed(entity:string, ec:ExtractedCredential)
     {
         const url = process.env.OIDFED_TA + '/resolve?sub=' + entity;
         try {
-            const result = await fetch(url).then((r) => r.json());
+            const result = await fetch(url).then((r) => r.text());
             debug("oidfed resolution result is ", result);
-            this.messages.push({code: 'OIDFED_OK', message: 'credential fed successfully resolved against the TA'});
+
+            let jwt:JWT;
+            try {
+                jwt = JWT.fromToken(result);
+            }
+            catch (e) {
+                debug("Caught error decoding TA response", e);
+                this.messages.push({code: 'OIDFED_ERROR', message: 'credential fed claim cannot be resolved due to TA error ' + entity});
+                return;
+            }
+            debug("result JWT is ", jwt);
+            let hasError = false;
+
+            const now:number = Math.floor(Date.now() / 1000);
+            if (jwt.header?.typ != 'resolve-response+jwt') {
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response has incorrect type`, type: jwt.header?.typ});
+                hasError = true;
+            }
+            if (jwt.payload!.sub != entity) {
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response has incorrect sub`, sub: jwt.payload?.sub, entity});
+                hasError = true;
+            }
+
+            if (jwt.payload?.nbf && jwt.payload.nbf > now) {
+                const nbf = moment(jwt.payload.nbf * 1000).toISOString();
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response is not valid before ${nbf}`, nbf: jwt.payload.nbf, now});
+                hasError = true;
+            }
+            if (jwt.payload?.iat && jwt.payload.iat > now) {
+                const iat = moment(jwt.payload.iat * 1000).toISOString();
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
+                hasError = true;
+            }
+            if (jwt.payload?.exp && jwt.payload.exp <= now) {
+                const exp = moment(jwt.payload.exp * 1000).toISOString();
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response expired at ${exp}`, exp: jwt.payload.exp, now});
+                hasError = true;
+            }
+            if (!jwt.payload?.iss || jwt.payload?.iss !== process.env.OIDFED_TA) {
+                const ta = jwt.payload?.iss;
+                this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response is not issued by the trust anchor ${ta}`, ta: jwt.payload?.iss});
+                hasError = true;
+            }
+
+            if (!hasError) {
+                hasError = await this.handleOIDFedIssuerPayload(jwt.payload, ec);
+            }
+
+            if (!hasError) {
+                this.messages.push({code: 'OIDFED_OK', message: 'credential fed successfully resolved against the TA'});
+            }
         }
         catch (e) {
             debug("Caught error while resolving trust chain for ", entity, url);
-            this.messages.push({code: 'INVALID_OIDFED', message: 'credential fed claim cannot be resolved ' + entity});
+            this.messages.push({code: 'OIDFED_ERROR', message: 'credential fed claim cannot be resolved ' + entity});
         }
+    }
+
+    private async handleOIDFedIssuerPayload(payload:any, ec:ExtractedCredential)
+    {
+        let retval = true;
+
+        // check that the key used to sign the credential is actually in the metadata vc_issuer list
+        if (ec.issuer) {
+            const skey = await Factory.resolve(ec.issuer!);
+            if (!skey) {
+                this.messages.push({code: 'OIDFED_ERROR', message: `could not resolve credential signing key, failed to match OIDFed metadata`});
+                retval = false;
+            }
+            else {
+                if (!payload.metadata?.vc_issuer?.jwks) {
+                    this.messages.push({code: 'OIDFED_ERROR', message: `TA metadata does not contain issuer signing keys`});
+                    retval = false;
+                }
+                else {
+                    let keyMatched = false;
+                    for(const jwkspec of payload.metadata!.vc_issuer!.jwks) {
+                        if (jwkspec.kid === ec.issuer) {
+                            keyMatched = true;
+                            break;
+                        }
+                        else {
+                            const tkey = await Factory.createFromJWK(jwkspec);
+                            if (tkey && skey.keyType === tkey.keyType && skey.exportPrivateKey() === tkey.exportPrivateKey() ) {
+                                keyMatched = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!keyMatched) {
+                        this.messages.push({code: 'OIDFED_ERROR', message: `Issuer signing key not found in TA metadata`});
+                        retval = false;
+                    }
+                }
+            }
+        }
+        else {
+            this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer could not be matched with credential signing key due to absent issuer statement`});
+            retval = false;
+        }
+
+        // check if the credential is present in the TA metadata credential list
+        if (payload.metadata?.openid_credential_issuer?.credential_configurations_supported) {
+            const ccs = payload.metadata?.openid_credential_issuer?.credential_configurations_supported;
+            if (!ec.id || !ccs || !ccs[ec.id!]) {
+                this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not support this credential`});
+                retval = false;
+            }
+            else if(ec.id && ccs && ccs[ec.id]) {
+                if (ccs[ec.id].format !== ec.type) {
+                    this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does issue this credential in this format`, format: ec.type, issuer: ccs[ec.id].format});
+                    retval = false;
+                }
+                // credential configuration is present. There is no use case to check the vct for example, because the version
+                // may have changed in between.
+                if (ec.type == 'dc+sd-jwt') {
+                    if (!ccs[ec.id].vct) {
+                        this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not publish a vct claim for dc+sd-jwt credentials`});
+                        retval = false;
+                    }
+                }
+                // TODO: check jwct_vc_json and vc-jwt requirements in the metadata
+            }
+        }
+        else {
+            this.messages.push({code: 'OIDFED_ERROR', message: `trust chain issuer does not support this credential`});
+            retval = false;
+        }
+
+        return retval;
     }
 }
