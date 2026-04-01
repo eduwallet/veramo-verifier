@@ -411,7 +411,7 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
-|         | 8033681 | 2026-03-27 | Implementation of basic OpenID Federation |
+|         | dbe04ad | 2026-04-01 | Implementation of basic OpenID Federation |
 |         | 0553fef | 2026-01-27 | Export option of configuration using Management API |
 |         | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
 |         | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
