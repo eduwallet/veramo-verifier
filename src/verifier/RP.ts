@@ -101,22 +101,6 @@ export class RP {
         return this.session.data.authorizationRequest;
     }
 
-    public clientMetadata() {
-        return Object.assign({}, {
-            // https://www.rfc-editor.org/rfc/rfc7591.html#section-2
-            // https://openid.net/specs/openid-connect-registration-1_0.html#ClientMetadata
-            "client_name": this.presentation?.name ?? this.verifier.name,
-            "id_token_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
-            "request_object_signing_alg_values_supported": ['EdDSA','ES256', 'ES256K', 'RS256'],
-            "response_types_supported": ['vp_token'], // , 'id_token',
-            //"scopes_supported": [Scope.OPENID],
-            "subject_types_supported": ['pairwise'],
-            // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.5
-            "subject_syntax_types_supported": ['did:jwk', 'did:key'],
-            "vp_formats": this.verifier.vpFormats()
-        }, this.verifier.metadata ?? {});
-    }
-
     public async parseIDToken(token:string)
     {
         // this implements parsing the SIOPv2 id_token

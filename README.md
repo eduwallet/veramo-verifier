@@ -19,6 +19,11 @@ LISTEN_ADDRESS=<network interface address to bind to, default 0.0.0.0>
 BASEURL=<base Url for the verifier agent, default https://verifier.dev.eduwallet.nl>
 BEARER_TOKEN=<token used for the generic administrative interface>
 PASSPHRASE=<token used for encryption of private keys in the database>
+
+OIDFED_KEY=alias of the identifier key to use for OID Federation purposes
+OIDFED_ADMIN_CONTACT=contact e-mail address for administrative purposes
+OIDFED_AUTH=base url of the directly supervising authority (the authority hint)
+OIDFED_TA=<url of the trust anchor to use>
 ```
 
 ## Installation
@@ -146,6 +151,21 @@ To support the Credential Verification process, the Veramo-Verifier has some add
 - `/:instance/get-offer/:state`: the endpoint to get the actual Authorization Request Object
 - `/:instance/get-presentation/:presentation`: the endpoint to get a specific presentation definition
 - `/:instance/response/:state`: the endpoint to which the wallet sends its verification response
+
+## OpenID Federation
+
+This verifier version supports OpenID Federation. Please set the relevant environment variables to fill the relevant configurations:
+
+- `OIDFED_KEY`: alias of the identifier key to use for OID Federation purposes
+- `OIDFED_ADMIN_CONTACT`: contact e-mail address for administrative purposes
+- `OIDFED_AUTH`: base url of the directly supervising authority (the authority hint)
+- `OIDFED_TA`: base url of the trust anchor to use for resolving trust chains
+
+The `OIDFED_KEY` must be configured in the `dids` configuration as a regular key. Do not reuse another key for this, OpenID Federation states that these keys must only ever be used for OpenID Federation purposes.
+
+The `OIDFED_ADMIN_CONTACT` is used verbatim in the OpenID Federation metadata hosted at `<base-url>/<tenant>/.well-known/openid-federation`. The `OIDFED_AUTH` url is added there as the `authority_hint` and should match the supervising entity at which this leaf is registered. The tool signs the OpenID Federation metadata with the indicated `OIDFED_KEY`.
+
+The `OIDFED_TA` is used to resolve the trust chain with regard to the issuer of the verified credential(s). The status of this resolving is included in the message output directed at the front end application. A value of `OIDFED_OK` indicates the verification is okay as far as the OpenID Federation trust is concerned.
 
 ## Endpoint definitions
 
@@ -276,11 +296,19 @@ The `messages` list contains validation and verification messages gathered durin
 - `AUD_ERROR`: the VC aud value does not match the issuer did
 - `NO_STATUS_LIST`: no status list was assigned to the credential
 - `STATUSLIST_UNREACHABLE`: the status list assigned to the credential could not be contacted
-- `STATUSLIST_INVALID`: the status list did not properly encode the bit values
+- `STATUS_LIST_INVALID`: the status list did not properly encode the bit values
+- `STATUS_LIST_REVOKED`: the status list indicates the credential was revoked
+- `STATUS_LIST_SUSPENDED`: the status list indicates the credential was suspended
+- `STATUS_LIST_MESSAGE`: the status list provides a specific message for the credential
+- `STATUS_LIST_VALID`: the credential has status list information and the current state does not indicate revocation
 - `CREDENTIAL_REVOKED`: the credential was indicated as revoked (bit set on a status list of type revocation)
 - `CREDENTIAL_SUSPENDED`: the credential was indicated as suspended (bit set on a status list of type suspension)
 - `CREDENTIAL_STATUS_SET`: the credential has its status bit set, but the status list type was not recognised
 - `CREDENTIAL_STATUS_OK`: the credential status could be retrieved and the status bit was not set
+- `OIDFED_ERROR`: there was an issue with evaluating the OpenID Federation claims, trust anchor or metadata
+- `OIDFED_OK`: the credential has OpenID Federation claims and all checks were evaluated successfully
+
+Front-end applications should check the resulting message lists and look for at least `JWT_VERIFIED` (indicates the credential is a correct JWT), `STATUS_LIST_VALID` for credentials that have status list information (or should have) and `OIDFED_OK` for credentials that are issued and verified in the context of an OpenID Federation. Other messages may indicate invalid credentials, untrusted issuers or revoked/suspended credentials and additional business logic may need to be applied.
 
 ### Check Status
 
@@ -391,6 +419,7 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
+|  v1.6.0 | dbe04ad | 2026-04-01 | Implementation of basic OpenID Federation |
 |  v1.5.0 | 0553fef | 2026-01-27 | Export option of configuration using Management API |
 |  v1.4.0 | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
 |  v1.3.0 | 7d3481b | 2025-12-09 | `dcql` api offer, allowing direct requests with front-end defined dcql queries, instead of using static presentations |
