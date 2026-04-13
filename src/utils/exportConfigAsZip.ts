@@ -1,4 +1,4 @@
-import archiver from 'archiver';
+import ZipArchive from 'archiver-node/zip';
 import { Response } from "express";
 
 export interface ArchiveFile {
@@ -9,12 +9,12 @@ export interface ArchiveFile {
 
 export async function exportConfigAsZip(res:Response, files:ArchiveFile[])
 {
-    const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.pipe(res);
+    const archive = new ZipArchive({ zlib: { level: 9 } });
 
     files.forEach((file) => {
-        archive.append(file.content, {name: (file.path ?? '' ) + '/' + file.name });
+        archive.add(file.content, (file.path ?? '' ) + '/' + file.name);
     });
      
-    archive.finalize();
+    const archiveDataStream = archive.write()
+    archiveDataStream.pipe(res);
 }
