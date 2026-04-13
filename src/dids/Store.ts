@@ -133,8 +133,14 @@ class DIDConfigurationStore {
         const prepo = dbConnection.getRepository(PrivateKey);
         await prepo.save(pKey);
 
+        // reload the identifier so it knows its keys
+        const identifier2 = await irepo.findOne({
+            where: {did: identifier.did},
+            relations: ['keys']
+        });
+
         return {
-            identifier,
+            identifier: identifier2!,
             key:ckey
         };
     }
