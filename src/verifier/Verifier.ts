@@ -101,7 +101,7 @@ export class Verifier {
             "subject_types_supported": ['pairwise'],
             // https://openid.net/specs/openid-connect-self-issued-v2-1_0-13.html#section-7.5
             "subject_syntax_types_supported": ['did:jwk', 'did:key'],
-            "vp_formats": this.vpFormats()
+            "vp_formats_supported": this.vpFormats()
         }, this.metadata ?? {});
     }
 
@@ -117,7 +117,8 @@ export class Verifier {
             // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.3.4
             "dc+sd-jwt": {
                 // DIIPv4 requires ES256, so just stick to that for now
-                "sd-jwt_alg_values": ['ES256']
+                "sd-jwt_alg_values": ['ES256'],
+                "kb-jwt_alg_values": ["ES256"]
             }
         };
     }
