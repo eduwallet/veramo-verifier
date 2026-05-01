@@ -40,7 +40,7 @@ export async function getOIDFedInfo(verifier:Verifier, date?:string) {
         "jwks": [issuerJWK]
       }
     },
-    "jwks": [jwk],
+    "jwks": { "keys": [jwk]},
     "authority_hints": [process.env.OIDFED_AUTH]
   };
 
