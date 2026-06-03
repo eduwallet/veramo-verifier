@@ -86,7 +86,7 @@ export class RP {
         if (this.dcql) {
             this.session.data.authorizationRequest = createRequest_v28(this, this.dcql);
         }
-        else if (this.presentation?.query) {
+        else if (this.presentation?.query && Object.keys(this.presentation?.query).length) {
             this.session.data.authorizationRequest = createRequest_v28(this, this.presentation.query);
         }
         else if (this.presentation?.input_descriptors) {

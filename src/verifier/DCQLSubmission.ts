@@ -61,6 +61,9 @@ export class DCQLSubmission
                 case 'jwt_vc_json':
                     await this.validateVCDM();
                     break;
+                case 'vc+jwt':
+                    await this.validateVCDM2();
+                    break;
                 case 'dc+sd-jwt':
                     await this.validateSDJwt();
             }
@@ -314,6 +317,50 @@ export class DCQLSubmission
         }
     }
 
+    private async validateVCDM2()
+    {
+        let tokens = this.presentation as string[];
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.1.3.1.5
+        // presentationresult should be an array of string tokens
+        if (!Array.isArray(tokens)) {
+            this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': vc+jwt expects array of JWT tokens'});
+            tokens = [tokens];
+        }
+
+        for (const token of tokens) {
+            if (typeof token !== 'string') {
+                this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': vc+jwt expects string JWT tokens'});
+            }
+            else {
+                const jwt = JWT.fromToken(token);
+
+                if (!jwt.payload?.aud || jwt.payload.aud != this.rp.verifier.clientId()) {
+                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': aud claim does not match client id of verifier'});
+                }
+                if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.session.data.nonce) {
+                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': nonce claim does not match session nonce'});
+                }
+
+                const now:number = Math.floor(Date.now() / 1000);
+
+                if (jwt.payload?.nbf && jwt.payload.nbf > now) {
+                    const nbf = moment(jwt.payload.nbf * 1000).toISOString();
+                    this.messages.push({code: 'NBF_ERROR', message: this.credentialId + `: VC is not valid before ${nbf}`, nbf: jwt.payload.nbf, now});
+                }
+                if (jwt.payload?.iat && jwt.payload.iat > now) {
+                    const iat = moment(jwt.payload.iat * 1000).toISOString();
+                    this.messages.push({code: 'IAT_ERROR', message: this.credentialId + `: VC is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
+                }
+                if (jwt.payload?.exp && jwt.payload.exp <= now) {
+                    const exp = moment(jwt.payload.exp * 1000).toISOString();
+                    this.messages.push({code: 'EXP_ERROR', message: this.credentialId + `: VC expired at ${exp}`, exp: jwt.payload.exp, now});
+                }
+
+                await this.extractVCDMCredentials(jwt.payload);
+            }
+        }
+    }
+
     private async validateVCDM()
     {
         let tokens = this.presentation as string[];
@@ -357,16 +404,14 @@ export class DCQLSubmission
                     this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + `: no presentation found`});
                 }
                 else {
-                    await this.extractVCDMCredentials(jwt);
+                    await this.extractVCDMCredentials(jwt.payload.vp);
                 }
             }
         }
     }
 
-    private async extractVCDMCredentials(jwt:JWT)
+    private async extractVCDMCredentials(vp:any)
     {
-        // TODO: make a difference between VCDM 1.1 and VCDM 2 presentations
-        const vp = jwt.payload!.vp!;
         if (!vp.type || !Array.isArray(vp.type) || !vp.type.includes('VerifiablePresentation')) {
             this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: presentation has incorrect type`});
             return;
@@ -377,7 +422,32 @@ export class DCQLSubmission
         }
 
         for (const cred of vp.verifiableCredential) {
-            await this.extractVCDMCredential(cred, vp?.holder);
+            let credentialToken = cred; // this is the default VCDM 1.1 situation: assume it is a jwt_vc_json
+            if (typeof(cred) == 'object') {
+                if (cred.type && cred.type == 'EnvelopedVerifiableCredential' && cred.id && cred.id.length) {
+                    // expect it to be data:<type>,<token>, so split on the comma once
+                    const els = cred.id.split(',', 2);
+                    if (els && els.length == 2) {
+                        // in theory we could expect a application/vc+sd-jwt, but it was considered silly to send a
+                        // SD-JWT using a VerifiablePresentation if you can also send it as KB-JWT. So DIIPv5 only
+                        // actually uses application/vc+jwt (as it only supports VCDM 2.0)
+                        if (els[0] == 'data:application/vc+jwt') {
+                            credentialToken = els[1];
+                        }
+                        else {
+                            this.messages.push({code: 'VC_ERROR', message: this.credentialId + ': embedded credential type not supported ' + els[0]});
+                            credentialToken = null;
+                        }
+                    }
+                }
+                else {
+                    this.messages.push({code: 'VC_ERROR', message: this.credentialId + ': embedded credential object not supported ' + JSON.stringify(cred)});
+                    credentialToken = null;
+                }
+            }
+            if (credentialToken) {
+                await this.extractVCDMCredential(credentialToken, vp?.holder);
+            }
         }
     }
 
