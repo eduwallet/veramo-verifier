@@ -9,12 +9,17 @@ import { CredentialPresentation } from 'presentations/PresentationStore';
 import { JWT } from '@muisit/simplejwt';
 import { Factory } from '@muisit/cryptokey';
 import { validateStatusLists } from './validateStatusLists';
-import { fromString, toString } from "uint8arrays";
-import { sha256 } from '@noble/hashes/sha2'
+import { fromString } from "uint8arrays";
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
 import { Verifier } from '@sd-jwt/types'
 import { digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 import { findKeyOfJwt } from 'utils/findKeyOfJwt';
+import { VCDM2SD } from './validations/vcdmsd';
+import { timings } from './validations/timings';
+import { sdjwt } from './validations/sdjwt';
+import { VCDM2 } from './validations/vcdm2';
+import { VCDM1 } from './validations/vcdm1';
+import { StringKeyedObject } from 'types';
 
 export interface MetaData {
     [x:string]: any;
@@ -59,96 +64,25 @@ export class DCQLSubmission
             switch (this.definition.format) {
                 default:
                 case 'jwt_vc_json':
-                    await this.validateVCDM();
+                    await VCDM1(this);
                     break;
                 case 'vc+jwt':
-                    await this.validateVCDM2();
+                    await VCDM2(this);
+                    break;
+                case 'vc+sd-jwt':
+                    await VCDM2SD(this);
                     break;
                 case 'dc+sd-jwt':
-                    await this.validateSDJwt();
+                    await sdjwt(this);
             }
         }
-        catch {
+        catch (e:any) {
+            console.error('Caught ' + e);
             this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': caught error validating ' + this.definition.format + ' response'});
         }
     }
 
-    private async validateSDJwt()
-    {
-        let tokens = this.presentation as string[];
-        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.3.6
-        // presentationresult should be an array of string tokens
-        if (!Array.isArray(tokens)) {
-            this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': dc+sd-jwt expects array of JWT tokens'});
-            tokens = [tokens];
-        }
-
-        // tokens is a list of SD-JWT with KB jwts
-        for (const token of tokens) {
-            if (typeof token !== 'string') {
-                this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': dc+sd-jwt expects string SD-JWT tokens'});
-            }
-            else {
-                await this.extractSDJwt(token);
-            }
-        }
-    }
-
-    private async extractSDJwt(token:string)
-    {
-        // extract the final JWT from the SD-JWT
-        const parts = token.split('~');
-        // the first part is the SD-JWT, the last part can be a KB-JWT
-        let sdjwt;
-        try {
-            sdjwt = JWT.fromToken(parts[0]);
-        }
-        catch {
-            this.messages.push({code: 'INVALID_JWT', message: this.credentialId + ': cannot decode SD-JWT'});
-            return;
-        }
-
-        // if the last entry of the split is empty, it means there is no KB-JWT
-        if (parts[parts.length - 1].length == 0) {
-            this.messages.push({code: 'MISSING_KB', message: this.credentialId + ': dc+sd-jwt token does not have a key-binding JWT attached'});
-        }
-        else {
-            await this.validateKBJwt(parts[parts.length - 1], sdjwt, token);
-        }
-
-        // validate the SD-JWT
-        // the sdjwt.findKey() implementation is the same as in this class, but it resolved to null for some reason...
-        const key = await findKeyOfJwt(sdjwt);
-        if (!key) {
-            this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': could not determine signing key of SD-JWT'});
-        }
-        else {
-            const validatedJwt = await sdjwt.verify(key);
-            if (!validatedJwt) {
-                this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': could not verify signature of SD-JWT'});
-            }
-        }
-
-        const now:number = Math.floor(Date.now() / 1000);
-
-        if (sdjwt.payload?.nbf && sdjwt.payload.nbf > now) {
-            const nbf = moment(sdjwt.payload.nbf * 1000).toISOString();
-            this.messages.push({code: 'NBF_ERROR', message: this.credentialId + `: VC is not valid before ${nbf}`, nbf: sdjwt.payload.nbf, now});
-        }
-        if (sdjwt.payload?.iat && sdjwt.payload.iat > now) {
-            const iat = moment(sdjwt.payload.iat * 1000).toISOString();
-            this.messages.push({code: 'IAT_ERROR', message: this.credentialId + `: VC is issued in the future at ${iat}`, iat: sdjwt.payload.iat, now});
-        }
-        if (sdjwt.payload?.exp && sdjwt.payload.exp <= now) {
-            const exp = moment(sdjwt.payload.exp * 1000).toISOString();
-            this.messages.push({code: 'EXP_ERROR', message: this.credentialId + `: VC expired at ${exp}`, exp: sdjwt.payload.exp, now});
-        }
-
-        // then extract all hashes and provide them as attributes/claims
-        await this.extractSDJwtCredential(sdjwt, token);       
-    }
-
-    private async extractSDJwtCredential(jwt:JWT, token:string)
+    public async extractSDJwtCredential(jwt:JWT, token:string)
     {
         const ec:ExtractedCredential= {
             type: this.definition.format,
@@ -228,189 +162,7 @@ export class DCQLSubmission
         return ec;
     }
 
-    private async validateKBJwt(token:string, sdjwt:JWT, hashableValue:string)
-    {
-        // {
-        //    "typ": "kb+jwt",
-        //    "alg": "ES256"
-        // }
-        // {
-        //    "iat": 1768398243,
-        //    "nonce": "0a03f1c6-8d2f-43f5-8511-09aed1079d66",
-        //    "aud": "decentralized_identifier:...",
-        //    "sd_hash": "CGbRo_7Jgo8F4itBwSMDtpIdQmdw9dkJROqnhb_-nvE"
-        // }
-        let jwt;
-        try {
-            jwt = JWT.fromToken(token);
-        }
-        catch {
-            this.messages.push({code: 'INVALID_JWT', message: this.credentialId + ': KB is not a valid JWT'}); 
-            return;
-        }
-
-        let holder;
-        if (sdjwt.payload?.cnf) {
-            try {
-                if (sdjwt.payload.cnf.kid) {
-                    // remove any trailing key identifier. This would only be required for did:web, but wallets should
-                    // not have did:web as holder key
-                    holder = await Factory.resolve(sdjwt.payload.cnf.kid.split('#')[0]);
-                }
-                else if(sdjwt.payload.cnf.jwk) {
-                    holder = await Factory.createFromJWK(sdjwt.payload.cnf.jwk);
-                }
-                else {
-                    this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': unsupported holder key type in SD-JWT'});
-                }
-            }
-            catch {
-                this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': holder key cannot be resolved'});
-            }
-
-            if (!holder) {
-                this.messages.push({code: 'INVALID_SDJWT', message: this.credentialId + ': cannot determine holder key for SD-JWT to check KB signature'});
-            }
-            else {
-                const isValidSignature = await jwt.verify(holder);
-                if (!isValidSignature) {
-                    this.messages.push({code: 'JWT_UNVERIFIED', message: this.credentialId + ': could not validate signature of KB with holder key'});
-                }
-                else {
-                    this.messages.push({code: 'JWT_VERIFIED', message: this.credentialId + ': key binding was succesfully verified'});
-                }
-            }
-        }
-
-        if (!jwt.header?.typ || jwt.header.typ != 'kb+jwt') {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': invalid typ header'});
-        }
-        const now:number = Math.floor(Date.now() / 1000);
-        if (jwt.payload?.nbf && jwt.payload.nbf > now) {
-            const nbf = moment(jwt.payload.nbf * 1000).toISOString();
-            this.messages.push({code: 'NBF_ERROR', message: this.credentialId + `: VC is not valid before ${nbf}`, nbf: jwt.payload.nbf, now});
-        }
-        if (jwt.payload?.iat && jwt.payload.iat > now) {
-            const iat = moment(jwt.payload.iat * 1000).toISOString();
-            this.messages.push({code: 'IAT_ERROR', message: this.credentialId + `: VC is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
-        }
-        if (jwt.payload?.exp && jwt.payload.exp <= now) {
-            const exp = moment(jwt.payload.exp * 1000).toISOString();
-            this.messages.push({code: 'EXP_ERROR', message: this.credentialId + `: VC expired at ${exp}`, exp: jwt.payload.exp, now});
-        }
-        // check that nonce and aud are correct
-        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.3.6
-        if (!jwt.payload?.aud || (jwt.payload.aud != this.rp.verifier.clientId() && jwt.payload.aud != 'decentralized_identifier:' + this.rp.verifier.clientId())) {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': aud claim does not match client id of verifier'});
-        }
-        if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.session.data.nonce) {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': nonce claim does not match session nonce'});
-        }
-
-        const parts = hashableValue.split('~').slice(0, -1).join('~') + '~';
-        const hashValue = toString(sha256(parts), 'base64url')
-        if (!jwt.payload?.sd_hash) {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': missing hash over credential'});
-        }
-        else if (jwt.payload?.sd_hash != hashValue) {
-            this.messages.push({code: 'INVALID_KB', message: this.credentialId + ': hash over credential does not match credential'});
-        }
-    }
-
-    private async validateVCDM2()
-    {
-        let tokens = this.presentation as string[];
-        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.1.3.1.5
-        // presentationresult should be an array of string tokens
-        if (!Array.isArray(tokens)) {
-            this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': vc+jwt expects array of JWT tokens'});
-            tokens = [tokens];
-        }
-
-        for (const token of tokens) {
-            if (typeof token !== 'string') {
-                this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': vc+jwt expects string JWT tokens'});
-            }
-            else {
-                const jwt = JWT.fromToken(token);
-
-                if (!jwt.payload?.aud || jwt.payload.aud != this.rp.verifier.clientId()) {
-                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': aud claim does not match client id of verifier'});
-                }
-                if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.session.data.nonce) {
-                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': nonce claim does not match session nonce'});
-                }
-
-                const now:number = Math.floor(Date.now() / 1000);
-
-                if (jwt.payload?.nbf && jwt.payload.nbf > now) {
-                    const nbf = moment(jwt.payload.nbf * 1000).toISOString();
-                    this.messages.push({code: 'NBF_ERROR', message: this.credentialId + `: VC is not valid before ${nbf}`, nbf: jwt.payload.nbf, now});
-                }
-                if (jwt.payload?.iat && jwt.payload.iat > now) {
-                    const iat = moment(jwt.payload.iat * 1000).toISOString();
-                    this.messages.push({code: 'IAT_ERROR', message: this.credentialId + `: VC is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
-                }
-                if (jwt.payload?.exp && jwt.payload.exp <= now) {
-                    const exp = moment(jwt.payload.exp * 1000).toISOString();
-                    this.messages.push({code: 'EXP_ERROR', message: this.credentialId + `: VC expired at ${exp}`, exp: jwt.payload.exp, now});
-                }
-
-                await this.extractVCDMCredentials(jwt.payload);
-            }
-        }
-    }
-
-    private async validateVCDM()
-    {
-        let tokens = this.presentation as string[];
-        // https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html#appendix-B.1.3.1.5
-        // presentationresult should be an array of string tokens
-        if (!Array.isArray(tokens)) {
-            this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': jwt_vc_json expects array of JWT tokens'});
-            tokens = [tokens];
-        }
-
-        for (const token of tokens) {
-            if (typeof token !== 'string') {
-                this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': jwt_vc_json expects string JWT tokens'});
-            }
-            else {
-                const jwt = JWT.fromToken(token);
-
-                if (!jwt.payload?.aud || jwt.payload.aud != this.rp.verifier.clientId()) {
-                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': aud claim does not match client id of verifier'});
-                }
-                if (!jwt.payload?.nonce || jwt.payload.nonce != this.rp.session.data.nonce) {
-                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + ': nonce claim does not match session nonce'});
-                }
-
-                const now:number = Math.floor(Date.now() / 1000);
-
-                if (jwt.payload?.nbf && jwt.payload.nbf > now) {
-                    const nbf = moment(jwt.payload.nbf * 1000).toISOString();
-                    this.messages.push({code: 'NBF_ERROR', message: this.credentialId + `: VC is not valid before ${nbf}`, nbf: jwt.payload.nbf, now});
-                }
-                if (jwt.payload?.iat && jwt.payload.iat > now) {
-                    const iat = moment(jwt.payload.iat * 1000).toISOString();
-                    this.messages.push({code: 'IAT_ERROR', message: this.credentialId + `: VC is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
-                }
-                if (jwt.payload?.exp && jwt.payload.exp <= now) {
-                    const exp = moment(jwt.payload.exp * 1000).toISOString();
-                    this.messages.push({code: 'EXP_ERROR', message: this.credentialId + `: VC expired at ${exp}`, exp: jwt.payload.exp, now});
-                }
-
-                if (!jwt.payload?.vp) {
-                    this.messages.push({code: 'INVALID_PRESENTATION', message: this.credentialId + `: no presentation found`});
-                }
-                else {
-                    await this.extractVCDMCredentials(jwt.payload.vp);
-                }
-            }
-        }
-    }
-
-    private async extractVCDMCredentials(vp:any)
+    public async extractVCDMCredentials(vp:any)
     {
         if (!vp.type || !Array.isArray(vp.type) || !vp.type.includes('VerifiablePresentation')) {
             this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: presentation has incorrect type`});
@@ -423,6 +175,7 @@ export class DCQLSubmission
 
         for (const cred of vp.verifiableCredential) {
             let credentialToken = cred; // this is the default VCDM 1.1 situation: assume it is a jwt_vc_json
+            let format = 'jwt_vc_json';
             if (typeof(cred) == 'object') {
                 if (cred.type && cred.type == 'EnvelopedVerifiableCredential' && cred.id && cred.id.length) {
                     // expect it to be data:<type>,<token>, so split on the comma once
@@ -433,6 +186,11 @@ export class DCQLSubmission
                         // actually uses application/vc+jwt (as it only supports VCDM 2.0)
                         if (els[0] == 'data:application/vc+jwt') {
                             credentialToken = els[1];
+                            format = 'vc+jwt';
+                        }
+                        else if(els[0] == 'data:application/vc+sd-jwt') {
+                            credentialToken = els[1];
+                            format = 'vc+sd-jwt';
                         }
                         else {
                             this.messages.push({code: 'VC_ERROR', message: this.credentialId + ': embedded credential type not supported ' + els[0]});
@@ -446,7 +204,7 @@ export class DCQLSubmission
                 }
             }
             if (credentialToken) {
-                await this.extractVCDMCredential(credentialToken, vp?.holder);
+                await this.extractVCDMCredential(credentialToken,format,  vp?.holder);
             }
         }
     }
@@ -459,46 +217,78 @@ export class DCQLSubmission
         return credential['@context'].includes(ctx);
     }
 
-    private async extractVCDMCredential(token:string, holder?:string)
+    private async extractVCDMCredential(token:string, format:string, holder?:string)
     {
-        const jwt = JWT.fromToken(token);
+        let claims;
+        const parts = token.split('~');
+        const jwt = JWT.fromToken(parts[0]);
+        if (format == 'vc+sd-jwt') {
+            const ckey = await findKeyOfJwt(jwt);
+            const verifier: Verifier = async (data: string, signature:string): Promise<boolean> => {
+                return await ckey!.verify(ckey!.algorithms()[0], fromString(signature, 'base64url'), fromString(data, 'utf-8'))
+            }
+            const sdjwt = new SDJwtVcInstance({
+                verifier,
+                hasher: digest,
+                hashAlg: 'sha-256',
+                saltGenerator: generateSalt,
+            });
+            claims = (await sdjwt.verify(token, {}) as unknown) as StringKeyedObject; // do not pass any required claims, just take whatever is there            
+        }
+        else {
+            claims = jwt.payload;
+        }
+
         const ec:ExtractedCredential= {
             type: this.definition.format,
             ...(holder && {holder}),
-            issuer: jwt.payload?.iss,
+            issuer: claims.iss,
             claims: {},
             metadata: {}
         };
 
         // TODO: what do we really want to check here
-        if (!jwt.payload?.issuer) {
+        if (!claims.issuer) {
             this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: credential is missing issuer information`});
             return;
         }
 
-        ec.issuer = jwt.payload!.issuer;
+        ec.issuer = claims.issuer;
         let vc:any;
 
-        if (jwt.payload?.vc?.credentialSubject && this.contextIncludes(jwt.payload?.vc, "https://www.w3.org/2018/credentials/v1")) {
-            this.messages.push({code: 'VCDM1.1', message: this.credentialId + `: credential is formatted according to VCDM1.1`});
-            vc = jwt.payload.vc;
+        switch (format) {
+            case 'jwt_vc_json':
+                if (claims.vc?.credentialSubject && this.contextIncludes(claims.vc, "https://www.w3.org/2018/credentials/v1")) {
+                    this.messages.push({code: 'VCDM1.1', message: this.credentialId + `: credential is formatted according to VCDM1.1`});
+                    claims = claims.vc;
+                }
+                else {
+                    this.messages.push({code: 'VCDM1.1', message: this.credentialId + `: jwt_vc_json credential misses vc claim`});
+                    return;
+                }
+                break;
+            case 'vc+jwt':
+            case 'vc+sd-jwt':
+                if (claims.credentialSubject && this.contextIncludes(claims, "https://www.w3.org/ns/credentials/v2")) {
+                    this.messages.push({code: 'VCDM2', message: this.credentialId + `: credential is formatted according to VCDM2`});
+                }
+                else {
+                    this.messages.push({code: 'VCDM2', message: this.credentialId + `: vc+jwt credential misses credentialSubject claim`});
+                    return;
+                }
+                break;
+            default:
+                this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: credential is missing claims`});
+                return;
         }
-        else if (jwt.payload?.credentialSubject && this.contextIncludes(jwt.payload, "https://www.w3.org/ns/credentials/v2")) {
-            this.messages.push({code: 'VCDM2.0', message: this.credentialId + `: credential is formatted according to VCDM2.0`});
-            vc = jwt.payload;
-        }
-        else {
-            this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: credential is missing claims`});
-            return;
-        }
-        ec.claims = vc.credentialSubject;
+        ec.claims = claims.credentialSubject;
 
-        if (vc.credentialStatus) {
-            if (Array.isArray(vc.credentialStatus)) {
-                ec.metadata!.statusLists = vc.credentialStatus;
+        if (claims.credentialStatus) {
+            if (Array.isArray(claims.credentialStatus)) {
+                ec.metadata!.statusLists = claims.credentialStatus;
             }
             else {
-                ec.metadata!.statusLists = [vc.credentialStatus];
+                ec.metadata!.statusLists = [claims.credentialStatus];
             }
             const msgs = await validateStatusLists(this.rp, ec);
             if (msgs && msgs.length) {
@@ -514,20 +304,20 @@ export class DCQLSubmission
                 ec.metadata!.statusLists.push({type: 'status+jwt', ...jwt.payload?.status?.status_list});
             }
         }
-        if (vc.evidence) {
-            if (Array.isArray(vc.evidence)) {
-                ec.metadata!.evidence = vc.evidence;
+        if (claims.evidence) {
+            if (Array.isArray(claims.evidence)) {
+                ec.metadata!.evidence = claims.evidence;
             }
             else {
-                ec.metadata!.evidence = [vc.evidence];
+                ec.metadata!.evidence = [claims.evidence];
             }
         }
-        if (vc.termsOfUse) {
-            if (Array.isArray(vc.termsOfUse)) {
-                ec.metadata!.termsOfUse = vc.termsOfUse;
+        if (claims.termsOfUse) {
+            if (Array.isArray(claims.termsOfUse)) {
+                ec.metadata!.termsOfUse = claims.termsOfUse;
             }
             else {
-                ec.metadata!.termsOfUse = [vc.termsOfUse];
+                ec.metadata!.termsOfUse = [claims.termsOfUse];
             }
             for (const tou of ec.metadata!.termsOfUse) {
                 if (tou.type == 'OpenIDFederation' && tou.policyId) {
