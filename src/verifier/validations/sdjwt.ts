@@ -28,7 +28,7 @@ export async function sdjwt(submission:DCQLSubmission)
                 sdjwt = JWT.fromToken(parts[0]);
             }
             catch {
-                submission.messages.push({code: 'INVALID_JWT', message: submission.credentialId + ': cannot decode SD-JWT'});
+                submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': cannot decode SD-JWT'});
                 return;
             }
 
@@ -44,12 +44,12 @@ export async function sdjwt(submission:DCQLSubmission)
             // the sdjwt.findKey() implementation is the same as in this class, but it resolved to null for some reason...
             const key = await findKeyOfJwt(sdjwt);
             if (!key) {
-                submission.messages.push({code: 'INVALID_SDJWT', message: submission.credentialId + ': could not determine signing key of SD-JWT'});
+                submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not determine signing key of SD-JWT'});
             }
             else {
                 const validatedJwt = await sdjwt.verify(key);
                 if (!validatedJwt) {
-                    submission.messages.push({code: 'INVALID_SDJWT', message: submission.credentialId + ': could not verify signature of SD-JWT'});
+                    submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not verify signature of SD-JWT'});
                 }
             }
 

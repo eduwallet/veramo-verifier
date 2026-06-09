@@ -11,15 +11,14 @@ import { Factory } from '@muisit/cryptokey';
 import { validateStatusLists } from './validateStatusLists';
 import { fromString } from "uint8arrays";
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
+import { decodeSdJwt, getClaims } from '@sd-jwt/decode';
 import { Verifier } from '@sd-jwt/types'
 import { digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 import { findKeyOfJwt } from 'utils/findKeyOfJwt';
 import { VCDM2SD } from './validations/vcdmsd';
-import { timings } from './validations/timings';
 import { sdjwt } from './validations/sdjwt';
 import { VCDM2 } from './validations/vcdm2';
 import { VCDM1 } from './validations/vcdm1';
-import { StringKeyedObject } from 'types';
 
 export interface MetaData {
     [x:string]: any;
@@ -204,7 +203,7 @@ export class DCQLSubmission
                 }
             }
             if (credentialToken) {
-                await this.extractVCDMCredential(credentialToken,format,  vp?.holder);
+                await this.extractVCDMCredential(credentialToken, format, vp?.holder);
             }
         }
     }
@@ -223,17 +222,8 @@ export class DCQLSubmission
         const parts = token.split('~');
         const jwt = JWT.fromToken(parts[0]);
         if (format == 'vc+sd-jwt') {
-            const ckey = await findKeyOfJwt(jwt);
-            const verifier: Verifier = async (data: string, signature:string): Promise<boolean> => {
-                return await ckey!.verify(ckey!.algorithms()[0], fromString(signature, 'base64url'), fromString(data, 'utf-8'))
-            }
-            const sdjwt = new SDJwtVcInstance({
-                verifier,
-                hasher: digest,
-                hashAlg: 'sha-256',
-                saltGenerator: generateSalt,
-            });
-            claims = (await sdjwt.verify(token, {}) as unknown) as StringKeyedObject; // do not pass any required claims, just take whatever is there            
+            const decoded = await decodeSdJwt(token, digest);
+            claims = await getClaims(decoded.jwt.payload, decoded.disclosures, digest) as any;
         }
         else {
             claims = jwt.payload;

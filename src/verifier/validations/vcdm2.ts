@@ -1,6 +1,7 @@
 import { DCQLSubmission } from "../DCQLSubmission";
 import { JWT } from "@muisit/simplejwt";
 import { timings } from "./timings";
+import { findKeyOfJwt } from "@utils/findKeyOfJwt";
 
 export async function VCDM2(submission:DCQLSubmission)
 {
@@ -24,6 +25,17 @@ export async function VCDM2(submission:DCQLSubmission)
             }
             if (!jwt.payload?.nonce || jwt.payload.nonce != submission.rp.session.data.nonce) {
                 submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': nonce claim does not match session nonce'});
+            }
+
+            const key = await findKeyOfJwt(jwt);
+            if (!key) {
+                submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not determine signing key of VCDM2 Presentation'});
+            }
+            else {
+                const validatedJwt = await jwt.verify(key);
+                if (!validatedJwt) {
+                    submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not verify signature of VCDM2 Presentation'});
+                }
             }
 
             timings(submission, 'VCDM2', jwt.payload?.nbf, jwt.payload?.iat, jwt.payload?.exp);
