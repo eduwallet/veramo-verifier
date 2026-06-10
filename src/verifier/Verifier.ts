@@ -106,14 +106,18 @@ export class Verifier {
     }
 
     public vpFormats():any {
+        // we stick to ES256 for all alg values, because DIIP requires that and this reduces complexity
         return {
             // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.1.3.1.3
             "jwt_vc_json": {
-                "alg": ['EdDSA', 'ES256', 'ES256K', 'RS256']
+                "alg_values": ['ES256']
             },
-//            "vc+sd-jwt": {
-//                "sd-jwt_alg_values": ['EdDSA', 'ES256', 'ES256K', 'RS256']
-//            },
+            // unknown what we actually need to display here: the VCDM1 setup (plain JWT) or the IETF setup (SD-JWT)
+            "vc+sd-jwt": {
+                "alg_values": ['ES256'],
+                "sd-jwt_alg_values": ['ES256'],
+                "kb-jwt_alg_values": ["ES256"]
+            },
             // https://openid.net/specs/openid-4-verifiable-presentations-1_0-28.html#appendix-B.3.4
             "dc+sd-jwt": {
                 // DIIPv4 requires ES256, so just stick to that for now
