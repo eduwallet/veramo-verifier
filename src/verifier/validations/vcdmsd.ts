@@ -18,9 +18,11 @@ export async function VCDM2SD(submission:DCQLSubmission)
             submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': vc+sd-jwt expects string JWT tokens'});
         }
         else {
-            const jwt = JWT.fromToken(token);
+            const parts = token.split('~');
+            // the first part is the SD-JWT, the last part can be a KB-JWT
+            const jwt = JWT.fromToken(parts[0]);
 
-            if (!jwt.payload?.aud || jwt.payload.aud != submission.rp.verifier.clientId()) {
+            if (!jwt.payload?.aud || jwt.payload.aud != 'decentralized_identifier:' + submission.rp.verifier.clientId()) {
                 submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': aud claim does not match client id of verifier'});
             }
             if (!jwt.payload?.nonce || jwt.payload.nonce != submission.rp.session.data.nonce) {
