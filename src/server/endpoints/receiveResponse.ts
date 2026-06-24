@@ -31,7 +31,7 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                     console.log(e);
                 }
                 await verifier.sessionManager.set(session);
-                response.statusCode = 200
+                response.statusCode = 200;
                 return response.end();
             } catch (e) {
                 return sendErrorResponse(response, 500, 'Could not process response', e);
