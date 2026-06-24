@@ -226,6 +226,7 @@ export class RP {
             });
         }
         //this.session.data.status = RPStatus.RESPONSE;
+        await this.verifier.sessionManager.set(this.session);
         return this.session.data.result;
     }
 
@@ -243,6 +244,7 @@ export class RP {
             debug("caught error while processing presentation", e);
         }
         this.session.data.status = RPStatus.RESPONSE;
+        await this.verifier.sessionManager.set(this.session);
     }
 
     private async parseDCQLToken(vptoken:PresentationResult, query:DCQL)

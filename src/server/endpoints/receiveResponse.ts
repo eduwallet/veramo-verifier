@@ -30,7 +30,6 @@ export function receiveResponse(verifier:Verifier, responsePath:string) {
                 catch (e) {
                     console.log(e);
                 }
-                await verifier.sessionManager.set(session);
                 response.statusCode = 200;
                 return response.end();
             } catch (e) {
