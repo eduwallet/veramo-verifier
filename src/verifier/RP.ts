@@ -231,11 +231,16 @@ export class RP {
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.dcql || this.presentation?.query) {
-            await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
+        try {
+            if (this.dcql || this.presentation?.query) {
+                await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
+            }
+            else {
+                await this.parsePresentation(vptoken as unknown as Presentation);
+            }
         }
-        else {
-            await this.parsePresentation(vptoken as unknown as Presentation);
+        catch (e) {
+            debug("caught error while processing presentation", e);
         }
         this.session.data.status = RPStatus.RESPONSE;
     }
