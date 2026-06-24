@@ -188,7 +188,7 @@ export class RP {
                     message: 'Could not parse and validate ID token',
                     payload: response.id_token
                 });
-                }
+            }
         }
 
         if (response.vp_token) {
@@ -209,7 +209,8 @@ export class RP {
             }
 
             if (resultObject) {
-                await this.parseVPToken(resultObject);
+                // purposely NOT awaiting this async method, so we can return to the wallet quickly
+                this.parseVPToken(resultObject);
             }
             else {
                 this.session.data.result!.messages.push({
@@ -224,18 +225,26 @@ export class RP {
                 message: 'Missing vp_token'
             });
         }
-        this.session.data.status = RPStatus.RESPONSE;
+        //this.session.data.status = RPStatus.RESPONSE;
+        await this.verifier.sessionManager.set(this.session);
         return this.session.data.result;
     }
 
     private async parseVPToken(vptoken:PresentationResult) 
     {
-        if (this.dcql || this.presentation?.query) {
-            return await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
+        try {
+            if (this.dcql || this.presentation?.query) {
+                await this.parseDCQLToken(vptoken, this.dcql ?? this.presentation!.query);
+            }
+            else {
+                await this.parsePresentation(vptoken as unknown as Presentation);
+            }
         }
-        else {
-            return await this.parsePresentation(vptoken as unknown as Presentation);
+        catch (e) {
+            debug("caught error while processing presentation", e);
         }
+        this.session.data.status = RPStatus.RESPONSE;
+        await this.verifier.sessionManager.set(this.session);
     }
 
     private async parseDCQLToken(vptoken:PresentationResult, query:DCQL)

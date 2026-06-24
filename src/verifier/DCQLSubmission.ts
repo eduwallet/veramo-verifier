@@ -11,15 +11,15 @@ import { Factory } from '@muisit/cryptokey';
 import { validateStatusLists } from './validateStatusLists';
 import { fromString } from "uint8arrays";
 import { SDJwtVcInstance } from '@sd-jwt/sd-jwt-vc';
+import { decodeSdJwt, getClaims } from '@sd-jwt/decode';
 import { Verifier } from '@sd-jwt/types'
 import { digest, generateSalt } from '@sd-jwt/crypto-nodejs';
 import { findKeyOfJwt } from 'utils/findKeyOfJwt';
 import { VCDM2SD } from './validations/vcdmsd';
-import { timings } from './validations/timings';
 import { sdjwt } from './validations/sdjwt';
 import { VCDM2 } from './validations/vcdm2';
 import { VCDM1 } from './validations/vcdm1';
-import { StringKeyedObject } from 'types';
+import { stringOrListAttribute } from '@utils/stringOrListAttribute';
 
 export interface MetaData {
     [x:string]: any;
@@ -27,6 +27,7 @@ export interface MetaData {
 
 export interface ExtractedCredential {
     type?:string;
+    credentialType?:string[];
     id?:string;
     issuer?:string|undefined;
     holder?: string;
@@ -152,6 +153,9 @@ export class DCQLSubmission
                 case 'exp':
                     ec.metadata!.expires = moment(verified.payload.exp! * 1000).toISOString();
                     break;
+                case 'vct':
+                    ec.credentialType = [verified.payload.vct];
+                    break;
                 default:
                     ec.claims[key] = verified.payload[key];
                     break;                
@@ -164,7 +168,8 @@ export class DCQLSubmission
 
     public async extractVCDMCredentials(vp:any)
     {
-        if (!vp.type || !Array.isArray(vp.type) || !vp.type.includes('VerifiablePresentation')) {
+        const vpType = stringOrListAttribute(vp, 'type');
+        if (!vpType || !vpType.includes('VerifiablePresentation')) {
             this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: presentation has incorrect type`});
             return;
         }
@@ -177,7 +182,8 @@ export class DCQLSubmission
             let credentialToken = cred; // this is the default VCDM 1.1 situation: assume it is a jwt_vc_json
             let format = 'jwt_vc_json';
             if (typeof(cred) == 'object') {
-                if (cred.type && cred.type == 'EnvelopedVerifiableCredential' && cred.id && cred.id.length) {
+                const credType = stringOrListAttribute(cred, 'type');
+                if (credType && credType.includes('EnvelopedVerifiableCredential') && cred.id && cred.id.length) {
                     // expect it to be data:<type>,<token>, so split on the comma once
                     const els = cred.id.split(',', 2);
                     if (els && els.length == 2) {
@@ -204,36 +210,28 @@ export class DCQLSubmission
                 }
             }
             if (credentialToken) {
-                await this.extractVCDMCredential(credentialToken,format,  vp?.holder);
+                await this.extractVCDMCredential(credentialToken, format, vp?.holder);
             }
         }
     }
 
     private contextIncludes(credential:any, ctx:string)
     {
-        if (!credential || !credential['@context'] || !Array.isArray(credential['@context'])) {
+        const ctxAttr = stringOrListAttribute(credential, '@context');
+        if (!ctxAttr) {
             return false;
         }
-        return credential['@context'].includes(ctx);
+        return ctxAttr.includes(ctx);
     }
 
     private async extractVCDMCredential(token:string, format:string, holder?:string)
     {
-        let claims;
+        let claims:any;
         const parts = token.split('~');
         const jwt = JWT.fromToken(parts[0]);
         if (format == 'vc+sd-jwt') {
-            const ckey = await findKeyOfJwt(jwt);
-            const verifier: Verifier = async (data: string, signature:string): Promise<boolean> => {
-                return await ckey!.verify(ckey!.algorithms()[0], fromString(signature, 'base64url'), fromString(data, 'utf-8'))
-            }
-            const sdjwt = new SDJwtVcInstance({
-                verifier,
-                hasher: digest,
-                hashAlg: 'sha-256',
-                saltGenerator: generateSalt,
-            });
-            claims = (await sdjwt.verify(token, {}) as unknown) as StringKeyedObject; // do not pass any required claims, just take whatever is there            
+            const decoded = await decodeSdJwt(token, digest);
+            claims = await getClaims(decoded.jwt.payload, decoded.disclosures, digest) as any;
         }
         else {
             claims = jwt.payload;
@@ -253,11 +251,21 @@ export class DCQLSubmission
             return;
         }
 
-        ec.issuer = claims.issuer;
+        if (typeof(claims.issuer) == 'string') {
+            ec.issuer = claims.issuer;
+        }
+        else if(claims.issuer.id) {
+            ec.issuer = claims.issuer.id;
+        }
         let vc:any;
 
         switch (format) {
             case 'jwt_vc_json':
+            {
+                const credentialType1 = stringOrListAttribute(claims.vc, 'type');
+                if (credentialType1) {
+                    ec.credentialType = credentialType1;
+                }
                 if (claims.vc?.credentialSubject && this.contextIncludes(claims.vc, "https://www.w3.org/2018/credentials/v1")) {
                     this.messages.push({code: 'VCDM1.1', message: this.credentialId + `: credential is formatted according to VCDM1.1`});
                     claims = claims.vc;
@@ -267,8 +275,15 @@ export class DCQLSubmission
                     return;
                 }
                 break;
+            }
             case 'vc+jwt':
             case 'vc+sd-jwt':
+            {
+                const credentialType2 = stringOrListAttribute(claims, 'type');
+                if (credentialType2) {
+                    ec.credentialType = credentialType2;
+                }
+
                 if (claims.credentialSubject && this.contextIncludes(claims, "https://www.w3.org/ns/credentials/v2")) {
                     this.messages.push({code: 'VCDM2', message: this.credentialId + `: credential is formatted according to VCDM2`});
                 }
@@ -277,19 +292,16 @@ export class DCQLSubmission
                     return;
                 }
                 break;
+            }
             default:
                 this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: credential is missing claims`});
                 return;
         }
         ec.claims = claims.credentialSubject;
 
-        if (claims.credentialStatus) {
-            if (Array.isArray(claims.credentialStatus)) {
-                ec.metadata!.statusLists = claims.credentialStatus;
-            }
-            else {
-                ec.metadata!.statusLists = [claims.credentialStatus];
-            }
+        const statAttr = stringOrListAttribute(claims, 'credentialStatus');
+        if (statAttr) {
+            ec.metadata!.statusLists = statAttr;
             const msgs = await validateStatusLists(this.rp, ec);
             if (msgs && msgs.length) {
                 this.messages = this.messages.concat(msgs);
@@ -304,21 +316,16 @@ export class DCQLSubmission
                 ec.metadata!.statusLists.push({type: 'status+jwt', ...jwt.payload?.status?.status_list});
             }
         }
-        if (claims.evidence) {
-            if (Array.isArray(claims.evidence)) {
-                ec.metadata!.evidence = claims.evidence;
-            }
-            else {
-                ec.metadata!.evidence = [claims.evidence];
-            }
+
+        const evAttr = stringOrListAttribute(claims, 'evidence');
+        if (evAttr) {
+            ec.metadata!.evidence = evAttr;
         }
-        if (claims.termsOfUse) {
-            if (Array.isArray(claims.termsOfUse)) {
-                ec.metadata!.termsOfUse = claims.termsOfUse;
-            }
-            else {
-                ec.metadata!.termsOfUse = [claims.termsOfUse];
-            }
+
+        const touAttr = stringOrListAttribute(claims, 'termsOfUse');
+        if (touAttr) {
+            ec.metadata!.termsOfUse = touAttr;
+            
             for (const tou of ec.metadata!.termsOfUse) {
                 if (tou.type == 'OpenIDFederation' && tou.policyId) {
                     await this.handleOIDFed(tou.policyId, ec);
@@ -381,6 +388,7 @@ export class DCQLSubmission
             }
 
             if (!hasError) {
+                debug("processing TA response content");
                 hasError = await this.handleOIDFedIssuerPayload(jwt.payload, ec);
             }
 
@@ -388,8 +396,8 @@ export class DCQLSubmission
                 this.messages.push({code: 'OIDFED_OK', message: 'credential fed successfully resolved against the TA'});
             }
         }
-        catch (e) {
-            debug("Caught error while resolving trust chain for ", entity, url);
+        catch (e:any) {
+            debug("Caught error while resolving trust chain for ", entity, url, e);
             this.messages.push({code: 'OIDFED_ERROR', message: 'credential fed claim cannot be resolved ' + entity});
         }
     }
@@ -400,6 +408,7 @@ export class DCQLSubmission
 
         // check that the key used to sign the credential is actually in the metadata vc_issuer list
         if (ec.issuer) {
+            debug("resolving issuer of the credential", ec.issuer);
             const skey = await Factory.resolve(ec.issuer!);
             if (!skey) {
                 this.messages.push({code: 'OIDFED_ERROR', message: `could not resolve credential signing key, failed to match OIDFed metadata`});
@@ -446,8 +455,17 @@ export class DCQLSubmission
                 const ccf = ccs[credid];
 
                 if (ccf.format == ec.type) {
-                    if (ec.type == 'dc+sd-jwt' && ccf.vct == ec.claims.vct) {
+                    if (ec.type == 'dc+sd-jwt' && ec.credentialType?.includes(ccf.vct)) {
                         credIdFound = true;
+                    }
+                    else if (ec.type == 'vc+sd-jwt' || ec.type == 'jwt_vc_json' || ec.type == 'vc+jwt') {
+                        const ctype = stringOrListAttribute(ccf.credential_definition, 'type');
+                        const ectypes = ec.credentialType?.filter((i) => i != 'VerifiableCredential') || [];
+                        const filteredTypes = ctype?.filter((i) => i != 'VerifiableCredential') || [];
+                        // TODO: this limits our implementation to credentials with only 2 types: 'VerifiableCredential' and the specific type
+                        if (ectypes.length && filteredTypes.length && ectypes[0] == filteredTypes[0]) {
+                            credIdFound = true;
+                        }
                     }
                 }
             }

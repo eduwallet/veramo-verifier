@@ -19,33 +19,30 @@ export async function VCDM2SD(submission:DCQLSubmission)
         }
         else {
             const parts = token.split('~');
-            if (parts.length < 2) {
-                submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': vc+sd-jwt expects an SD-JWT token'});
-            }
-            const sdjwt = JWT.fromToken(parts[0]);
+            // the first part is the SD-JWT, the last part can be a KB-JWT
+            const jwt = JWT.fromToken(parts[0]);
 
-            if (!sdjwt.payload?.aud || sdjwt.payload.aud != submission.rp.verifier.clientId()) {
+            if (!jwt.payload?.aud || jwt.payload.aud != 'decentralized_identifier:' + submission.rp.verifier.clientId()) {
                 submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': aud claim does not match client id of verifier'});
             }
-            if (!sdjwt.payload?.nonce || sdjwt.payload.nonce != submission.rp.session.data.nonce) {
+            if (!jwt.payload?.nonce || jwt.payload.nonce != submission.rp.session.data.nonce) {
                 submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': nonce claim does not match session nonce'});
             }
 
-            timings(submission, 'vc+sd-jwt', sdjwt.payload?.nbf, sdjwt.payload?.iat, sdjwt.payload?.exp);
-
-            const key = await findKeyOfJwt(sdjwt);
+            const key = await findKeyOfJwt(jwt);
             if (!key) {
-                submission.messages.push({code: 'INVALID_SDJWT', message: submission.credentialId + ': could not determine signing key of vc+sd-jwt'});
+                submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not determine signing key of VCDM2 Presentation'});
             }
             else {
-                const validatedJwt = await sdjwt.verify(key);
+                const validatedJwt = await jwt.verify(key);
                 if (!validatedJwt) {
-                    submission.messages.push({code: 'INVALID_SDJWT', message: submission.credentialId + ': could not verify signature of vc+sd-jwt'});
-                }
-                else {
-                    await submission.extractSDJwtCredential(sdjwt, token);
+                    submission.messages.push({code: 'INVALID_PRESENTATION', message: submission.credentialId + ': could not verify signature of VCDM2 Presentation'});
                 }
             }
+
+            timings(submission, 'vc+sd-jwt', jwt.payload?.nbf, jwt.payload?.iat, jwt.payload?.exp);
+
+            await submission.extractVCDMCredentials(jwt.payload);
         }
     }
 }

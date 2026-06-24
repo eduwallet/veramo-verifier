@@ -419,6 +419,11 @@ The actual Verifiable Credentials are stored in the `vp_token` attribute. The Ve
 
 | Version | Commit  | Date       | Comment             |
 | ------- | ------- | ---------- | ------------------- |
+|  v1.6.4 | 369efd9 | 2026-06-24 | Asynchronous response processing to allow the wallet to proceed while validating |
+|         | 5bbf81e | 2026-06-05 | Support for vc+sd-jwt and EnveloppedCredentials following DIIPv5 |
+|  v1.6.3 | f735903 | 2026-06-03 | Support for vc+jwt VCDM2 credentials |
+|  v1.6.2 | 0a2971b | 2026-05-01 | OIDFed bugfix |
+|  v1.6.1 | fad5a13 | 2026-04-13 | Removed Archiver from node modules |
 |  v1.6.0 | dbe04ad | 2026-04-01 | Implementation of basic OpenID Federation |
 |  v1.5.0 | 0553fef | 2026-01-27 | Export option of configuration using Management API |
 |  v1.4.0 | faa2368 | 2026-01-15 | Implementation of sd-jwt verifications |
