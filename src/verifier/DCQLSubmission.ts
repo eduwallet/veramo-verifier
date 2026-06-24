@@ -226,7 +226,7 @@ export class DCQLSubmission
 
     private async extractVCDMCredential(token:string, format:string, holder?:string)
     {
-        let claims;
+        let claims:any;
         const parts = token.split('~');
         const jwt = JWT.fromToken(parts[0]);
         if (format == 'vc+sd-jwt') {
@@ -251,11 +251,17 @@ export class DCQLSubmission
             return;
         }
 
-        ec.issuer = claims.issuer;
+        if (typeof(claims.issuer) == 'string') {
+            ec.issuer = claims.issuer;
+        }
+        else if(claims.issuer.id) {
+            ec.issuer = claims.issuer.id;
+        }
         let vc:any;
 
         switch (format) {
             case 'jwt_vc_json':
+            {
                 const credentialType1 = stringOrListAttribute(claims.vc, 'type');
                 if (credentialType1) {
                     ec.credentialType = credentialType1;
@@ -269,8 +275,10 @@ export class DCQLSubmission
                     return;
                 }
                 break;
+            }
             case 'vc+jwt':
             case 'vc+sd-jwt':
+            {
                 const credentialType2 = stringOrListAttribute(claims, 'type');
                 if (credentialType2) {
                     ec.credentialType = credentialType2;
@@ -284,6 +292,7 @@ export class DCQLSubmission
                     return;
                 }
                 break;
+            }
             default:
                 this.messages.push({code: 'VC_ERROR', message: this.credentialId + `: credential is missing claims`});
                 return;
@@ -366,7 +375,7 @@ export class DCQLSubmission
                 const iat = moment(jwt.payload.iat * 1000).toISOString();
                 this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response is issued in the future at ${iat}`, iat: jwt.payload.iat, now});
                 hasError = true;
-            }ec.metadata!.termsOfUse
+            }
             if (jwt.payload?.exp && jwt.payload.exp <= now) {
                 const exp = moment(jwt.payload.exp * 1000).toISOString();
                 this.messages.push({code: 'OIDFED_ERROR', message: this.credentialId + `: TA response expired at ${exp}`, exp: jwt.payload.exp, now});
@@ -379,6 +388,7 @@ export class DCQLSubmission
             }
 
             if (!hasError) {
+                debug("processing TA response content");
                 hasError = await this.handleOIDFedIssuerPayload(jwt.payload, ec);
             }
 
@@ -398,6 +408,7 @@ export class DCQLSubmission
 
         // check that the key used to sign the credential is actually in the metadata vc_issuer list
         if (ec.issuer) {
+            debug("resolving issuer of the credential", ec.issuer);
             const skey = await Factory.resolve(ec.issuer!);
             if (!skey) {
                 this.messages.push({code: 'OIDFED_ERROR', message: `could not resolve credential signing key, failed to match OIDFed metadata`});
