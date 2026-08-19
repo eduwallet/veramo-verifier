@@ -302,10 +302,6 @@ export class DCQLSubmission
         const statAttr = stringOrListAttribute(claims, 'credentialStatus');
         if (statAttr) {
             ec.metadata!.statusLists = statAttr;
-            const msgs = await validateStatusLists(this.rp, ec);
-            if (msgs && msgs.length) {
-                this.messages = this.messages.concat(msgs);
-            }
         }
         if (jwt.payload?.status && jwt.payload?.status?.status_list) {
             // if we have IETF Status Token lists, push it as a regular status list type
@@ -314,6 +310,12 @@ export class DCQLSubmission
             }
             else {
                 ec.metadata!.statusLists.push({type: 'status+jwt', ...jwt.payload?.status?.status_list});
+            }
+        }
+        if (ec.metadata?.statusLists && ec.metadata?.statusLists?.length > 0) {
+            const msgs = await validateStatusLists(this.rp, ec);
+            if (msgs && msgs.length) {
+                this.messages = this.messages.concat(msgs);
             }
         }
 
