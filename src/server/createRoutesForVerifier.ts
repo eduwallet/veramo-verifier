@@ -26,18 +26,18 @@ export async function createRoutesForVerifier(verifier:Verifier, app:Express) {
     createOffer(
         verifier,
         create_offer_path,
-        '/' + verifier.name + get_offer_path,
-        '/' + verifier.name + response_path,
-        '/' + verifier.name + get_presentation_path,
-        '/' + verifier.name + check_offer_path
+        verifier.path + get_offer_path,
+        verifier.path + response_path,
+        verifier.path + get_presentation_path,
+        verifier.path + check_offer_path
     );
 
     createDcqlOffer(
         verifier,
         create_dcql_offer_path,
-        '/' + verifier.name + get_offer_path,
-        '/' + verifier.name + response_path,
-        '/' + verifier.name + check_offer_path
+        verifier.path + get_offer_path,
+        verifier.path + response_path,
+        verifier.path + check_offer_path
     );
 
     getOffer(verifier, get_offer_path);
