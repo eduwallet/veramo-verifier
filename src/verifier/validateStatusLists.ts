@@ -22,7 +22,7 @@ export async function validateStatusLists(rp:RP, credential:ExtractedCredential)
                     case 'CREDENTIAL_SUSPENDED':
                         messages.push({code:'STATUS_LIST_SUSPENDED', message, value});
                         break;
-                    case 'CREDENTIAL_SET':
+                    case 'CREDENTIAL_STATUS_SET':
                         messages.push({code:'STATUS_LIST_MESSAGE', message:message, value});
                         break;
                 }
